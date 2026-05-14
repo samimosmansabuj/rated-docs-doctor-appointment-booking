@@ -18,6 +18,7 @@ class EstimateResponse(TimeStampedModel):
     estimated_price = models.DecimalField(max_digits=10, decimal_places=2)
 
 
+
 class Appointment(TimeStampedModel):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="appointments")
     dentist = models.ForeignKey(DentistProfile, on_delete=models.CASCADE, related_name="appointments")
