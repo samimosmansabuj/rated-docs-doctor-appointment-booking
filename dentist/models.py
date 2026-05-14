@@ -3,7 +3,7 @@ from core.common_models import TimeStampedModel, SoftDeleteModel
 from core.choice_options import DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE
 from rest_framework.exceptions import ValidationError
 from account.models import User
-from appointments.models import Appointment
+
 
 class Clinic(TimeStampedModel, SoftDeleteModel):
     name = models.CharField(max_length=255)
@@ -45,9 +45,9 @@ class DentistWeeklyAvailability(TimeStampedModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("dentist", "day")    
+        unique_together = ("dentist", "day_of_week")    
         indexes = [
-            models.Index(fields=["dentist", "day"]),
+            models.Index(fields=["dentist", "day_of_week"]),
         ]
 
     def clean(self):
@@ -61,7 +61,7 @@ class SlotException(TimeStampedModel):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     reason = models.CharField(max_length=255, blank=True, null=True)
-    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, blank=True, null=True, related_name="slot_exceptions")
+    appointment = models.ForeignKey("appointments.Appointment", on_delete=models.SET_NULL, blank=True, null=True, related_name="slot_exceptions")
 
 
 class DentistVerification(TimeStampedModel):
