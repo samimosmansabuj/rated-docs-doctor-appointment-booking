@@ -2,7 +2,7 @@ from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
 from account.models import PatientProfile
 from dentist.models import DentistProfile
-from core.choice_options import ESTIMATE_REQUEST_STATUS, APPOINTMENT_STATUS_CHOICES, PAYMENT_STATUS, REFUND_STATUS
+from core.constants import ESTIMATE_REQUEST_STATUS, APPOINTMENT_STATUS_CHOICES, PAYMENT_STATUS, REFUND_STATUS
 
 class EstimateRequest(TimeStampedModel):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="estimate_requests")

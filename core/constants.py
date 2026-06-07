@@ -8,11 +8,25 @@ class USER_ROLE_CHOICES(models.TextChoices):
     ADMIN = "Admin"
     STAFF = "Staff"
 
+class USER_GENDER(models.TextChoices):
+    MALE = "MALE", "Male"
+    FEMALE = "FEMALE", "Male"
+
+class OTP_PURPOSE(models.TextChoices):
+    LOGIN = "LOGIN"
+    REGISTER = "REGISTER"
+    RESET = "RESET"
+
+class PAYMENT_METHOD_TYPE(models.TextChoices):
+    CARD = "CARD"
+    BANK = "BANK"
+    WALLET = "WALLET"
+
 # Dentist App Choice Option---
 class DENTIST_VERIFICATION_PHASE(models.TextChoices):
-    ONE = "Identity"
-    TWO = "Operational"
-    THREE = "Clinical"
+    ONE = "LICENSE", "License"
+    TWO = "OPERATIONAL" "Operational"
+    THREE = "CLINICAL" "Clinical"
 
 class WEEK_DAY(models.TextChoices):
     SUN = "Sun", "Sunday"
@@ -35,15 +49,22 @@ class APPOINTMENT_SLOT_EXCEPTION_TYPE(models.TextChoices):
     FREEZED = "FREEZED"
 
 class DENTIST_VERIFICATION_STATUS(models.TextChoices):
-    PENDING = "PENDING"
-    REVIEW = "REVIEW"
-    APPROVED = "APPROVED"
-    REJECT = "REJECT"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    APPROVED = "APPROVED", "Approved"
+    NEED_MORE_EVIDENCE = "NEED_MORE_EVIDENCE", "Need More Evidence"
+    RESUBMIT_REQUIRED = "RESUBMIT_REQUIRED", "Resubmit Required"
+    REJECTED = "REJECTED", "Rejected"
+    EXPIRED = "EXPIRED", "Expired"
+    
+    
 
 class DENTIST_DOCUMENT_TYPE(models.TextChoices):
-    LICENSE = "License"
-    CERTIFICATE = "Certificate"
-    INSURANCE = "Insurance"
+    LICENSE = "LICENSE", "License"
+    CERTIFICATE = "CERTIFICATE", "Certificate"
+    INSURANCE = "INSURANCE", "Insurance"
+
+
 
 # Appointments App Choice Option---
 class APPOINTMENT_STATUS_CHOICES(models.TextChoices):
