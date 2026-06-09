@@ -56,8 +56,6 @@ class DENTIST_VERIFICATION_STATUS(models.TextChoices):
     RESUBMIT_REQUIRED = "RESUBMIT_REQUIRED", "Resubmit Required"
     REJECTED = "REJECTED", "Rejected"
     EXPIRED = "EXPIRED", "Expired"
-    
-    
 
 class DENTIST_DOCUMENT_TYPE(models.TextChoices):
     LICENSE = "LICENSE", "License"
@@ -78,6 +76,46 @@ class ESTIMATE_REQUEST_STATUS(models.TextChoices):
     REVIEW = "Review"
     CONFIRMED = "Confirmed"
     REJECT = "Reject"
+
+class CONSULTATION_STATUS(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    INTAKE_IN_PROGRESS = "intake_in_progress", "Intake In Progress"
+    PENDING_REVIEW = "pending_review", "Pending Review"
+    WAITING_FOR_SCHEDULING = "waiting_for_scheduling", "Waiting for Scheduling"
+    SCHEDULED = "scheduled", "Scheduled"
+    IN_PROGRESS = "in_progress", "In Progress"
+    COMPLETED = "completed", "Completed"
+    ESTIMATE_PENDING = "estimate_pending", "Estimate Pending"
+    ESTIMATE_RECEIVED = "estimate_received", "Estimate Received"
+    CANCELLED = "cancelled", "Cancelled"
+    REJECTED = "rejected", "Rejected"
+
+class DENTAL_PHOTO_TYPE(models.TextChoices):
+    FRONT_SMILE = "front_smile"
+    WIDE_SMILE = "wide_smile"
+    LOWER_ARCH = "lower_arch"
+    UPPER_ARCH = "upper_arch"
+    LEFT_SIDE = "left_side"
+    RIGHT_SIDE = "right_side"
+
+class SCHEDULE_STATUS(models.TextChoices):
+    PENDING = "pending", "Pending"
+    CONFIRMED = "confirmed", "Confirmed"
+    RESCHEDULED = "rescheduled", "Rescheduled"
+    CANCELLED = "cancelled", "Cancelled"
+    NO_SHOW = "no_show", "No Show"
+    COMPLETED = "completed", "Completed"
+
+class VIDEO_SESSION_STATUS(models.TextChoices):
+    SCHEDULED = "scheduled", "Scheduled"
+    WAITING = "waiting", "Waiting"
+    IN_CALL = "in_call", "In Call"
+    ENDED = "ended", "Ended"
+    FAILED = "failed", "Failed"
+    CANCELLED = "cancelled", "Cancelled"
+    RECONNECTED = "reconnected", "Reconnected"
+
+
 
 class PAYMENT_STATUS(models.TextChoices):
     PENDING = "Pending"

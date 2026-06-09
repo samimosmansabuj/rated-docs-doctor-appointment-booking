@@ -24,3 +24,5 @@ class LicenseRegistrationAuthority(TimeStampedModel):
     def __str__(self):
         return f"{self.name} ({self.country})"
 
+
+

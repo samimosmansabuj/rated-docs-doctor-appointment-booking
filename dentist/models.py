@@ -153,8 +153,8 @@ class ProcedurePrice(TimeStampedModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                "dentist",
-                "procedure"
+                fields=["dentist", "procedure"],
+                name="unique_dentist_procedure_price"
             )
         ]
         
@@ -206,10 +206,5 @@ class ProcedureMaterialVerification(TimeStampedModel):
 # =====================================================================
 
 
-class DentistService(TimeStampedModel):
-    dentist = models.ForeignKey(DentistProfile, on_delete=models.CASCADE, related_name="dentist_services")
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    base_price = models.DecimalField(max_digits=10, decimal_places=2)
 
 
