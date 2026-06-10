@@ -63,6 +63,15 @@ class DENTIST_DOCUMENT_TYPE(models.TextChoices):
     INSURANCE = "INSURANCE", "Insurance"
 
 
+# Log and Notification App Choice Option---
+class NOTIFICATION_FOR(models.TextChoices):
+    USER = "USER", "User"
+    ADMIN = "ADMIN", "Admin"
+    STAFF = "STAFF", "Staff"
+
+class LogStatus(models.TextChoices):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
 
 # Appointments App Choice Option---
 class APPOINTMENT_STATUS_CHOICES(models.TextChoices):

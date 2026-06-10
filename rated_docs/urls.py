@@ -1,22 +1,67 @@
-"""
-URL configuration for rated_docs project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include, re_path
+from django.conf import settings
+from django.views.static import serve as static_serve
+import os
+from django.http import JsonResponse
+from django.utils.timezone import now
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+
+# Administrator Dashboard Customized---
+admin.site.site_title = "RatedDocs Admin"
+admin.site.site_header = "RatedDocs"
+admin.site.app_index = "Welcome to RatedDocs Administrator"
+
+# Main Base API Online Template
+def Home(request):
+    return JsonResponse({
+        "application": "RatedDocs API",
+        "status": "online 🚀",
+        "server_time": now(),
+        "message": "Backend server is running successfully."
+    })
+
+def api_endpoint(request):
+    return JsonResponse(
+        {
+            "application": "API V1 Endpoint!",
+            "status": "online 🚀",
+            "server_time": now(),
+        }
+    )
 
 urlpatterns = [
+    # Admin URLs
     path('admin/', admin.site.urls),
+    
+    # Home and API Endpoint
+    path('', Home, name='home'),
+    path('api/v1/', api_endpoint, name='api_endpoint'),
+    
+    
+    # app urls include
+    # path("api/v1/", api_endpoint, name="api_endpoint"),
+    # path("api/v1/", include("account.urls")),
+    # path("api/v1/", include("core.urls")),
+    # path("api/v1/", include("notification.urls")),
+    # path("api/v1/", include("route.urls")),
+    # path("api/v1/", include("subscription.urls")),
+    
+    
+    # API schema
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Swagger UI
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    # Redoc UI
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+SERVE_MEDIA = os.getenv("SERVE_MEDIA", "False").strip().lower() in ("true","1","yes")
+
+if SERVE_MEDIA:
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', static_serve, {'document_root': settings.MEDIA_ROOT}),
+        re_path(r'^static/(?P<path>.*)$', static_serve, {'document_root': settings.STATIC_ROOT}),
+    ]
+
+

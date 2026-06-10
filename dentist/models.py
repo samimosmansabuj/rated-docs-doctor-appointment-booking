@@ -119,7 +119,7 @@ class ClinicOperationVerification(TimeStampedModel):
     status = models.CharField(max_length=20, choices=DENTIST_VERIFICATION_STATUS.choices, default=DENTIST_VERIFICATION_STATUS.SUBMITTED)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
-    verified_by = models.ForeignKey("accounts.User" ,null=True, blank=True, on_delete=models.SET_NULL)
+    verified_by = models.ForeignKey("account.User" ,null=True, blank=True, on_delete=models.SET_NULL)
     reviewer_notes = models.TextField(blank=True)
 
 # Sterilization
@@ -175,7 +175,7 @@ class ClinicalPathVerification(TimeStampedModel):
     verification = models.OneToOneField(DentistVerification, on_delete=models.CASCADE, related_name="clinical_path_verification")
     
     # Update field---
-    reviewer = models.ForeignKey("accounts.User",on_delete=models.SET_NULL,null=True,blank=True,related_name="clinical_reviews")
+    reviewer = models.ForeignKey("account.User",on_delete=models.SET_NULL,null=True,blank=True,related_name="clinical_reviews")
     status = models.CharField(max_length=20, choices=DENTIST_VERIFICATION_STATUS.choices, default=DENTIST_VERIFICATION_STATUS.SUBMITTED)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
