@@ -40,12 +40,13 @@ urlpatterns = [
     
     
     # app urls include
-    # path("api/v1/", api_endpoint, name="api_endpoint"),
-    # path("api/v1/", include("account.urls")),
-    # path("api/v1/", include("core.urls")),
-    # path("api/v1/", include("notification.urls")),
-    # path("api/v1/", include("route.urls")),
-    # path("api/v1/", include("subscription.urls")),
+    path("api/v1/", api_endpoint, name="api_endpoint"),
+    path("api/v1/", include("account.urls")),
+    path("api/v1/", include("analytics.urls")),
+    path("api/v1/", include("appointments.urls")),
+    path("api/v1/", include("chat_notify.urls")),
+    path("api/v1/", include("core.urls")),
+    path("api/v1/", include("dentist.urls")),
     
     
     # API schema

@@ -16,9 +16,10 @@ class Clinic(TimeStampedModel, SoftDeleteModel):
 
 class DentistProfile(TimeStampedModel, SoftDeleteModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="dentist_profile")
-    clinic = models.ForeignKey(Clinic, on_delete=models.SET_NULL, null=True, related_name="dentists")
+    clinic = models.ForeignKey(Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name="dentists")
 
-    full_name = models.CharField(max_length=255)
+    full_name = models.CharField(max_length=255, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     specialty = models.CharField(max_length=255)
     bio = models.TextField(blank=True)
     experience_years = models.IntegerField()
@@ -33,6 +34,9 @@ class DentistProfile(TimeStampedModel, SoftDeleteModel):
     verification_phase = models.IntegerField(choices=DENTIST_VERIFICATION_PHASE.choices, default=DENTIST_VERIFICATION_PHASE.ONE)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"{self.user.email} Dentist Profile"
 
 class DentistAddress(TimeStampedModel, SoftDeleteModel):
     profile = models.ForeignKey(DentistProfile, on_delete=models.CASCADE, related_name="dentist_address")

@@ -3,10 +3,10 @@ from django.db import models
 
 # Account App Choice Option---
 class USER_ROLE_CHOICES(models.TextChoices):
-    PATIENT = "Patient"
-    DENTIST = "Dentist"
-    ADMIN = "Admin"
-    STAFF = "Staff"
+    PATIENT = "PATIENT", "Patient"
+    DENTIST = "DENTIST", "Dentist"
+    ADMIN = "ADMIN", "Admin"
+    STAFF = "STAFF", "Staff"
 
 class USER_GENDER(models.TextChoices):
     MALE = "MALE", "Male"
