@@ -117,15 +117,55 @@ class VIDEO_SESSION_STATUS(models.TextChoices):
 
 
 
+class TREATMENT_PLAN_STAGE(models.TextChoices):
+    INITIAL = "INITIAL", "Initial"
+    FINAL = "FINAL", "Final"
+
+class APPOINTMENT_DECISION(models.TextChoices):
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+
+class FINAL_TREATMENT_DECISION_STATUS(models.TextChoices):
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+
+class TREATMENT_RESULT_PHOTO_TYPE(models.TextChoices):
+    BEFORE = "BEFORE", "Before"
+    AFTER = "AFTER", "After"
+
+class APPOINTMENT_STATUS(models.TextChoices):
+    AWAITING_RESPONSE = "AWAITING_RESPONSE", "Awaiting Response"
+    REJECTED = "REJECTED", "Rejected"
+    CONFIRMED = "CONFIRMED", "Confirmed"
+    ARRIVED = "ARRIVED", "Arrived"
+    IN_PROGRESS = "IN_PROGRESS", "In Progress"
+    PAYMENT_RELEASE_PENDING = "PAYMENT_RELEASE_PENDING", "Payment Release Pending"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
 class PAYMENT_STATUS(models.TextChoices):
-    PENDING = "Pending"
-    HELD = "Held"
-    RELEASED = "Released"
-    REFUND = "Refunded"
+    PENDING = "PENDING", "Pending"
+    IN_ESCROW = "IN_ESCROW", "In Escrow"
+    RELEASED = "RELEASED", "Released"
+    REFUNDED = "REFUNDED", "Refunded"
+    PARTIAL_REFUND = "PARTIAL_REFUND", "Partial Refund"
 
 class REFUND_STATUS(models.TextChoices):
-    PENDING = "Pending"
-    PROCESSING = "Processing"
-    CONFIRM = "Confirm"
-    COMPLETE = "Complete"
+    REQUESTED = "REQUESTED", "Requested"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    PROCESSED = "PROCESSED", "Processed"
+
+class REFUND_TYPE(models.TextChoices):
+    FULL = "FULL", "Full Refund"
+    PARTIAL = "PARTIAL", "Partial Refund"
+
+class REFUND_REASON(models.TextChoices):
+    PATIENT_REJECTED_FINAL_PLAN = "PATIENT_REJECTED_FINAL_PLAN", "Patient Rejected Final Treatment Plan"
+    APPOINTMENT_CANCELLED = "APPOINTMENT_CANCELLED", "Appointment Cancelled"
+    DOCTOR_UNAVAILABLE = "DOCTOR_UNAVAILABLE", "Doctor Unavailable"
+    NO_SHOW = "NO_SHOW", "Patient No Show"
+    PARTIAL_REFUND = "PARTIAL_REFUND", "Partial Refund"
+    ADMIN_MANUAL = "ADMIN_MANUAL", "Admin Manual Refund"
+
 
