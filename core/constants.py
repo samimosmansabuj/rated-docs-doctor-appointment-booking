@@ -10,11 +10,12 @@ class USER_ROLE_CHOICES(models.TextChoices):
 
 class USER_GENDER(models.TextChoices):
     MALE = "MALE", "Male"
-    FEMALE = "FEMALE", "Male"
+    FEMALE = "FEMALE", "Female"
 
 class OTP_PURPOSE(models.TextChoices):
     LOGIN = "LOGIN"
     REGISTER = "REGISTER"
+    EMAIL_VERIFICATION = "EMAIL_VERIFICATION"
     RESET = "RESET"
 
 class PAYMENT_METHOD_TYPE(models.TextChoices):
@@ -23,10 +24,16 @@ class PAYMENT_METHOD_TYPE(models.TextChoices):
     WALLET = "WALLET"
 
 # Dentist App Choice Option---
+class DENTIST_SPECIALTY(models.TextChoices):
+    PERIODONTIST = "PERIODONTIST", "Periodontist"
+    DENTIST = "DENTIST", "Dentist"
+    SURGEON = "SURGEON", "Surgeon"
+
 class DENTIST_VERIFICATION_PHASE(models.TextChoices):
     ONE = "LICENSE", "License"
-    TWO = "OPERATIONAL" "Operational"
-    THREE = "CLINICAL" "Clinical"
+    TWO = "OPERATIONAL", "Operational"
+    THREE = "CLINICAL", "Clinical"
+    COMPLETE = "COMPLETE", "Complete"
 
 class WEEK_DAY(models.TextChoices):
     SUN = "Sun", "Sunday"

@@ -1,6 +1,6 @@
 from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
-from core.constants import DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE
+from core.constants import DENTIST_SPECIALTY, DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE
 from rest_framework.exceptions import ValidationError
 from account.models import User
 from core.models import LicenseRegistrationAuthority, Procedure
@@ -20,9 +20,9 @@ class DentistProfile(TimeStampedModel, SoftDeleteModel):
 
     full_name = models.CharField(max_length=255, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    specialty = models.CharField(max_length=255)
-    bio = models.TextField(blank=True)
-    experience_years = models.IntegerField()
+    specialty = models.CharField(max_length=255, blank=True, null=True, choices=DENTIST_SPECIALTY.choices)
+    bio = models.TextField(blank=True, null=True)
+    experience_years = models.IntegerField(blank=True, null=True)
     is_claimed = models.BooleanField(default=False)
 
     rating_avg = models.FloatField(default=0)
@@ -31,21 +31,21 @@ class DentistProfile(TimeStampedModel, SoftDeleteModel):
     rdv_score = models.FloatField(default=0)
     response_time_avg = models.FloatField(default=0)
 
-    verification_phase = models.IntegerField(choices=DENTIST_VERIFICATION_PHASE.choices, default=DENTIST_VERIFICATION_PHASE.ONE)
+    verification_phase = models.CharField(choices=DENTIST_VERIFICATION_PHASE.choices, default=DENTIST_VERIFICATION_PHASE.ONE)
     is_verified = models.BooleanField(default=False)
-    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(blank=True, null=True)
     
     def __str__(self):
         return f"{self.user.email} Dentist Profile"
 
 class DentistAddress(TimeStampedModel, SoftDeleteModel):
     profile = models.ForeignKey(DentistProfile, on_delete=models.CASCADE, related_name="dentist_address")
-    address_line_1 = models.CharField(max_length=255)
+    address_line_1 = models.CharField(max_length=255, blank=True, null=True)
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100)
     country = models.CharField(max_length=100)
-    latitude = models.FloatField()
-    longitude = models.FloatField()
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
 
 # =====================================================================
 # ------------------------Dentist Availability------------------------
@@ -86,7 +86,7 @@ class SlotException(TimeStampedModel):
 # ------------------------Dentist Verification------------------------
 class DentistVerification(TimeStampedModel):
     dentist = models.OneToOneField(DentistProfile, on_delete=models.CASCADE, related_name="dentist_verification")
-    License_verification = models.BooleanField(default=False)
+    license_verification = models.BooleanField(default=False)
     operations_verification = models.BooleanField(default=False)
     clinical_verification = models.BooleanField(default=False)
 
@@ -99,12 +99,12 @@ class DentistLicenseVerification(TimeStampedModel):
     
     # general field---
     professional_headshot = models.ImageField(upload_to="documents/headshot/", blank=True, null=True)
-    city = models.CharField(max_length=100)
-    country = models.CharField(max_length=100)
-    
+    city = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+
     registration_authority = models.ForeignKey(LicenseRegistrationAuthority, on_delete=models.SET_NULL, blank=True, null=True, related_name="dentist_license")
     registration_no = models.CharField(max_length=100)
-    doc_type = models.CharField(max_length=20, choices=DENTIST_DOCUMENT_TYPE.choices)
+    doc_type = models.CharField(max_length=20, choices=DENTIST_DOCUMENT_TYPE.choices, default=DENTIST_DOCUMENT_TYPE.LICENSE)
     file = models.FileField(upload_to="documents/license/", blank=True, null=True)
     
     # Update field---
@@ -115,7 +115,7 @@ class DentistLicenseVerification(TimeStampedModel):
 
 # Clinical Operation Verification Phase-----
 class ClinicOperationVerification(TimeStampedModel):
-    clinic = models.OneToOneField(Clinic, on_delete=models.CASCADE, related_name="operation_verification")
+    clinic = models.OneToOneField(Clinic, on_delete=models.CASCADE, related_name="operation_verification", blank=True, null=True)
     dentist = models.OneToOneField(DentistProfile, on_delete=models.CASCADE, related_name="operation_verification")
     verification = models.OneToOneField(DentistVerification, on_delete=models.CASCADE, related_name="operation_verification")
 
@@ -139,10 +139,9 @@ class SterilizationVerification(TimeStampedModel):
 class SterilizationWalkthrough(TimeStampedModel):
     sterilization = models.OneToOneField(SterilizationVerification, on_delete=models.CASCADE, related_name="walkthrough")
     walkthrough_video = models.FileField(upload_to="documents/sterilization-videos/", blank=True, null=True)
-    autoclave_brand = models.CharField(max_length=255)
+    autoclave_brand = models.BooleanField(default=False)
     sealed_pouch_visible = models.BooleanField(default=False)
     ultrasonic_cleaner_available = models.BooleanField(default=False)
-    cycle_frequency = models.CharField(max_length=255)
 
 # Procedure Price
 class ProcedurePrice(TimeStampedModel):

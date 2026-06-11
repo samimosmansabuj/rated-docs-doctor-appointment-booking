@@ -2,21 +2,38 @@ from django.shortcuts import get_object_or_404
 from dentist.models import DentistProfile
 from rest_framework import status
 from rest_framework.views import APIView
-from .serializers import SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer
+from rest_framework.permissions import IsAuthenticated
+from .serializers import ResendOTPSerializer, SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from core.permissions import IsDentist
 
-
+# ==========================================================================
+# ======================Authentication Views=========================
 class SignupAPIView(OwnAPIView):
     serializer_class = SignupSerializer
     
     def success_response(self, serializer):
         user = serializer.save()
+        serializer.send_otp(user)
         return custom_response(
             success=True,
             message="User created successfully",
+            data={"email": user.email, "role": user.role},
+            status=status.HTTP_201_CREATED
+        )
+
+class AdminUserAddViews(OwnAPIView):
+    serializer_class = AdminUserAddSerializer
+    permission_classes = [IsAuthenticated]
+
+    def success_response(self, serializer):
+        user = serializer.save()
+        return custom_response(
+            success=True,
+            message="User added successfully",
             data={"email": user.email, "role": user.role},
             status=status.HTTP_201_CREATED
         )
@@ -30,6 +47,27 @@ class LoginAPIView(OwnAPIView):
             message="Login successful",
             data=serializer.validated_data,
             status=status.HTTP_200_OK
+        )
+
+class VerifyOTPAPIView(OwnAPIView):
+    serializer_class = VerifyOTPSerializer
+
+    def success_response(self, serializer):
+        data = serializer.save()
+        return custom_response(
+            success=True,
+            message="OTP verified successfully.",
+            data=data
+        )
+
+class ResendOTPAPIView(OwnAPIView):
+    serializer_class = ResendOTPSerializer
+
+    def success_response(self, serializer):
+        serializer.save()
+        return custom_response(
+            success=True,
+            message="OTP sent successfully."
         )
 
 class RefreshTokenAPIView(OwnAPIView):
@@ -75,7 +113,7 @@ class VerifyTokenAPIView(APIView):
             return custom_response(
                 success=True,
                 message="Token is valid",
-                data={"user_id": user.id, "email": user.email},
+                data={"user_id": user.id, "email": user.email, "type": user.role},
                 status=200
             )
         except Exception:
@@ -85,16 +123,20 @@ class VerifyTokenAPIView(APIView):
                 status=401
             )
 
+# ======================Authentication Views=========================
+# ==========================================================================
+
 class DentistProfessionalSubmitViews(APIView):
-    def post(self, request, dentist_id, *args, **kwargs):
-        dentist = get_object_or_404(DentistProfile, id=dentist_id)
-        serializer = DentistProfessionalSerializer(dentist, data=request.data)
+    permission_classes = [IsDentist]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = DentistProfessionalSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return custom_response(
             success=True, detail="Professional Details Submit.",
             status=status.HTTP_200_OK
         )
-        
-    
+
+
 

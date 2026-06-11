@@ -1,9 +1,12 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 from django.contrib.auth import get_user_model
-from .models import PatientProfile
-from dentist.models import DentistProfile
-from core.constants import USER_ROLE_CHOICES
+from .models import PatientProfile, OTP
+from dentist.models import DentistProfile, DentistAddress
+from core.constants import DENTIST_SPECIALTY, OTP_PURPOSE, USER_ROLE_CHOICES
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -16,7 +19,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "first_name", "last_name", "email", "username", "role"]
 
-
+# ==========================================================================
+# ======================Authentication Serializers=========================
 class SignupSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True)
@@ -25,14 +29,59 @@ class SignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["first_name", "last_name", "phone", "email", "username", "password", "role"]
-
+    
+    def validate_role(self, value):
+        value = value.upper()
+        if value in [
+            USER_ROLE_CHOICES.ADMIN,
+            USER_ROLE_CHOICES.STAFF,
+        ]:
+            raise serializers.ValidationError(
+                "You are not allowed to register as Admin or Staff."
+            )
+        return value
+    
+    def generate_otp(self):
+        import random
+        return str(random.randint(100000, 999999))
+    
     def create(self, validated_data):
         with transaction.atomic():
             password = validated_data.pop("password")
             role = validated_data.pop("role")
             if role not in USER_ROLE_CHOICES.values:
                 raise ValidationError("Invalid Role.")
+            user = User.objects.create_user(**validated_data)
+            user.set_password(password)
+            user.role = role
+            user.save()
+                        
+            # auto profile create
+            if role == "PATIENT":
+                PatientProfile.objects.create(user=user)
+            return user
+    
+    def send_otp(self, user):
+        otp = OTP.objects.create(user=user, otp_code=self.generate_otp(), purpose=OTP_PURPOSE.EMAIL_VERIFICATION)
+        return otp
+
+class AdminUserAddSerializer(serializers.ModelSerializer):
+    phone = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True)
+    role = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "phone", "email", "username", "password", "role"]
+    
+    def create(self, validated_data):
+        with transaction.atomic():
+            password = validated_data.pop("password")
             phone = validated_data.pop("phone")
+            role = validated_data.pop("role")
+            if role not in USER_ROLE_CHOICES.values:
+                raise ValidationError("Invalid Role.")
+            
             user = User.objects.create_user(**validated_data)
             user.set_password(password)
             user.role = role
@@ -85,10 +134,117 @@ class RefreshSerializer(serializers.Serializer):
         except Exception:
             raise serializers.ValidationError("Invalid refresh token")
 
-class DentistProfessionalSerializer(serializers.Serializer):
-    city = serializers.CharField(write_only=True)
-    country = serializers.CharField(write_only=True)
+class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+
+    def validate(self, attrs):
+        email = attrs["email"]
+        otp_code = attrs["otp"]
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise ValidationError("User not found.")
+
+        otp = OTP.objects.filter(
+            user=user,
+            otp_code=otp_code,
+            purpose=OTP_PURPOSE.EMAIL_VERIFICATION,
+            is_verified=False
+        ).order_by("-created_at").first()
+
+        if not otp:
+            raise ValidationError("Invalid OTP.")
+
+        if otp.is_expired:
+            raise ValidationError("OTP expired.")
+
+        attrs["user"] = user
+        attrs["otp_obj"] = otp
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        otp = self.validated_data["otp_obj"]
+
+        user.is_verified = True
+        user.save(update_fields=["is_verified"])
+
+        otp.is_verified = True
+        otp.verified_at = timezone.now()
+        otp.save(update_fields=["is_verified"])
+
+        refresh = RefreshToken.for_user(user)
+
+        return {
+            "user": UserSerializer(user).data,
+            "role": user.role,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }
+
+class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
     
-    class Meta:
-        model = DentistProfile
-        fields = ["full_name", "specialty", "experience_years", "city", "country"]
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+
+        if user.is_verified:
+            raise serializers.ValidationError("User already verified.")
+        self.user = user
+        return value
+
+    def generate_otp(self):
+        import random
+        return str(random.randint(100000, 999999))
+
+    def save(self):
+        OTP.objects.filter(
+            user=self.user,
+            purpose=OTP_PURPOSE.EMAIL_VERIFICATION,
+            is_verified=False
+        ).delete()
+        return OTP.objects.create(
+            user=self.user,
+            otp_code=self.generate_otp(),
+            purpose=OTP_PURPOSE.EMAIL_VERIFICATION
+        )
+
+# ======================Authentication Serializers=========================
+# ==========================================================================
+
+
+class DentistProfessionalSerializer(serializers.Serializer):
+    full_name = serializers.CharField(required=True)
+    specialty = serializers.ChoiceField(choices=DENTIST_SPECIALTY.choices, required=True)
+    experience_years = serializers.IntegerField(required=True)
+    city = serializers.CharField(required=True)
+    country = serializers.CharField(required=True)
+    
+    def create(self, validated_data):
+        with transaction.atomic():
+            request = self.context.get("request")
+            user = request.user
+            if user.role != USER_ROLE_CHOICES.DENTIST:
+                raise ValidationError("Only dentists can submit professional details.")
+
+            dentist_profile, created = DentistProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    "full_name": validated_data.get("full_name"),
+                    "specialty": validated_data.get("specialty"),
+                    "experience_years": validated_data.get("experience_years")
+                }
+            )
+            DentistAddress.objects.update_or_create(
+                profile=dentist_profile,
+                defaults={
+                    "city": validated_data.get("city"),
+                    "country": validated_data.get("country")
+                }
+            )
+            return dentist_profile

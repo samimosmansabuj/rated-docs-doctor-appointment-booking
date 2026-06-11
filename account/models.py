@@ -8,6 +8,7 @@ from django.db import transaction
 class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=10, choices=USER_ROLE_CHOICES.choices)
+    phone = models.CharField(max_length=20, blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
@@ -27,7 +28,6 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
 
 class PatientProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="patient_profile")
-    phone = models.CharField(max_length=20, unique=True)
     date_of_birth = models.DateField(blank=True, null=True)
     gender = models.CharField(max_length=20, choices=USER_GENDER)
     country = models.CharField(max_length=100)
@@ -58,7 +58,7 @@ class OTP(TimeStampedModel):
         ]
     
     def __str__(self):
-        return f"{self.otp_code} OTP for {self.user.email}"
+        return f"{self.otp_code} OTP for {self.user.email} | Purpose: {self.purpose} | Verified: {self.is_verified} | Expired: {self.is_expired}"
 
 class UserPaymentMethod(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payment_methods")
