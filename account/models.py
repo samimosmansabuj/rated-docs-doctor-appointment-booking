@@ -1,21 +1,34 @@
 from django.db import models
 from core.constants import USER_ROLE_CHOICES, USER_GENDER, OTP_PURPOSE, PAYMENT_METHOD_TYPE
 from core.common_models import TimeStampedModel, SoftDeleteModel
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from .managers import UserManager
 from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.translation import gettext_lazy as _
 
-class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
-    email = models.EmailField(unique=True)
-    role = models.CharField(max_length=10, choices=USER_ROLE_CHOICES.choices)
+class User(TimeStampedModel, AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
+    first_name = models.CharField(_("first name"), max_length=150, blank=True, null=True)
+    last_name = models.CharField(_("last name"), max_length=150, blank=True, null=True)
+    email = models.EmailField(max_length=255, unique=True, db_index=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    role = models.CharField(max_length=10, choices=USER_ROLE_CHOICES.choices)
+    
+    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    last_device_info = models.TextField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
-
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
+    is_staff = models.BooleanField(default=False)
     
+    EMAIL_FIELD = "email"
+    USERNAME_FIELD = "email"
+
+    objects = UserManager()
+    
+    def save(self, *args, **kwargs):
+        return super().save(*args, **kwargs)
+
     def get_full_name(self):
         full_name = "%s %s" % (self.first_name, self.last_name)
         return full_name.strip()
@@ -25,6 +38,15 @@ class User(AbstractUser, TimeStampedModel, SoftDeleteModel):
 
     def email_user(self, subject, message, from_email=None, **kwargs):
         send_mail(subject, message, from_email, [self.email], **kwargs)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["email"]),
+            models.Index(fields=["role"]),
+        ]
+
+    def __str__(self):
+        return self.email
 
 class PatientProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="patient_profile")

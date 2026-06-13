@@ -17,18 +17,18 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "username", "role"]
+        fields = ["id", "first_name", "last_name", "email", "role"]
 
 # ==========================================================================
 # ======================Authentication Serializers=========================
 class SignupSerializer(serializers.ModelSerializer):
-    phone = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
     role = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone", "email", "username", "password", "role"]
+        fields = ["first_name", "last_name", "phone", "email", "password", "confirm_password", "role"]
     
     def validate_role(self, value):
         value = value.upper()
@@ -41,6 +41,15 @@ class SignupSerializer(serializers.ModelSerializer):
             )
         return value
     
+    def validate(self, attrs):
+        password = attrs.get("password")
+        confirm_password = attrs.get("confirm_password")
+        if password != confirm_password:
+            raise serializers.ValidationError({
+                "confirm_password": "Passwords do not match."
+            })
+        return attrs
+    
     def generate_otp(self):
         import random
         return str(random.randint(100000, 999999))
@@ -48,17 +57,15 @@ class SignupSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         with transaction.atomic():
             password = validated_data.pop("password")
+            validated_data.pop("confirm_password", None)
             role = validated_data.pop("role")
-            if role not in USER_ROLE_CHOICES.values:
-                raise ValidationError("Invalid Role.")
-            user = User.objects.create_user(**validated_data)
-            user.set_password(password)
+            if role not in USER_ROLE_CHOICES.values: raise ValidationError("Invalid Role.")
+            user = User.objects.create_user(**validated_data, password=password)
             user.role = role
             user.save()
-                        
+            
             # auto profile create
-            if role == "PATIENT":
-                PatientProfile.objects.create(user=user)
+            if role == "PATIENT": PatientProfile.objects.create(user=user)
             return user
     
     def send_otp(self, user):
@@ -85,6 +92,7 @@ class AdminUserAddSerializer(serializers.ModelSerializer):
             user = User.objects.create_user(**validated_data)
             user.set_password(password)
             user.role = role
+            user.is_verified = True
             user.save()
 
             # auto profile create
@@ -110,9 +118,11 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get("email")
         password = attrs.get("password")
         role = attrs.get("role")
-        user = authenticate(username=email, password=password)
+        user = authenticate(email=email, password=password)
         if not user:
             raise ValidationError("Invalid credentials")
+        elif user.is_verified is False:
+            raise ValidationError("User Unverified.")
         self.check_role(role, user)
         refresh = RefreshToken.for_user(user)
         return {
