@@ -3,7 +3,7 @@ from rest_framework.serializers import ValidationError
 from django.utils import timezone
 from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES
 from core.models import LicenseRegistrationAuthority, Procedure
-from dentist.models import ClinicOperationVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedurePrice, SterilizationVerification, SterilizationWalkthrough
+from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, SterilizationWalkthrough
 from django.db import transaction
 
 class DentistVerificationProgressSerializer(serializers.Serializer):
@@ -38,7 +38,7 @@ class DentistVerificationPhaseUpdateSerializer(serializers.Serializer):
 
 # =====================================================================
 # ------------------------Dentist Verification------------------------
-class DentistLicenseVerificationSerializer(serializers.Serializer):
+class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
     professional_headshot = serializers.ImageField(required=True)
     city = serializers.CharField(required=True)
     country = serializers.CharField(required=True)
@@ -122,7 +122,7 @@ class NoSurpriseGuaranteeSerializer(serializers.Serializer):
     typed_signature = serializers.CharField()
     accepted_terms = serializers.BooleanField()
 
-class ClinicOperationVerificationSerializer(serializers.Serializer):
+class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
     sterilization = SterilizationSectionSerializer()
     procedures = ProcedurePriceItemSerializer(many=True)
     guarantee = NoSurpriseGuaranteeSerializer()
@@ -143,7 +143,7 @@ class ClinicOperationVerificationSerializer(serializers.Serializer):
                 dentist=dentist
             )
 
-            operation_verification, _ = (
+            operation_verification, created = (
                 ClinicOperationVerification.objects.update_or_create(
                     # clinic=clinic,
                     dentist=dentist,
@@ -153,6 +153,19 @@ class ClinicOperationVerificationSerializer(serializers.Serializer):
                     }
                 )
             )
+            
+            if not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.SUBMITTED, DENTIST_VERIFICATION_STATUS.UNDER_REVIEW]:
+                raise ValidationError(
+                    "Operational verification is already submitted and pending review."
+                )
+            elif not created and operation_verification.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+                raise ValidationError(
+                    "Operational verification has already been approved. You cannot update it."
+                )
+            # elif not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.REJECTED, DENTIST_VERIFICATION_STATUS.NEED_MORE_EVIDENCE, DENTIST_VERIFICATION_STATUS.RESUBMIT_REQUIRED]:
+            #     raise ValidationError(
+            #         "Operational verification needs resubmission. Please update the required information and resubmit."
+            #     )
 
             sterilization_data = validated_data.pop("sterilization")
             procedures_data = validated_data.pop("procedures")
@@ -202,6 +215,82 @@ class ClinicOperationVerificationSerializer(serializers.Serializer):
             )
 
             return operation_verification
+
+
+class ProcedureMaterialVerificationItemSerializer(serializers.Serializer):
+    own_procedure = serializers.PrimaryKeyRelatedField(queryset=ProcedurePrice.objects.all())
+    brand_name = serializers.CharField(required=True)
+    # ce_certificate = serializers.FileField(required=False)
+    # material_brands = serializers.FileField(required=False)
+    # invoice = serializers.FileField(required=False)
+    # protocol_pdf = serializers.FileField(required=False)
+    # notes = serializers.CharField(required=False, allow_blank=True)
+
+class ClinicalPathVerificationSubmitSerializer(serializers.Serializer):
+    materials = ProcedureMaterialVerificationItemSerializer(many=True, required=True)
+
+    def validate_materials(self, value):
+        user = self.context["request"].user
+        dentist = user.dentist_profile
+        for item in value:
+            if item["own_procedure"].dentist_id != dentist.id:
+                raise serializers.ValidationError(
+                    "You can only submit your own procedures."
+                )
+        return value
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            user = self.context["request"].user
+            dentist = user.dentist_profile
+            if dentist.verification_phase != DENTIST_VERIFICATION_PHASE.THREE:
+                raise serializers.ValidationError(
+                    "Clinical verification is not available yet."
+                )
+
+            # clinic = dentist.clinic
+            verification = DentistVerification.objects.get(
+                dentist=dentist
+            )
+
+            clinical_path, created = (
+                ClinicalPathVerification.objects.update_or_create(
+                    # clinic=clinic,
+                    dentist=dentist,
+                    verification=verification,
+                    defaults={
+                        "status": DENTIST_VERIFICATION_STATUS.SUBMITTED
+                    }
+                )
+            )
+            
+            if not created and clinical_path.status in [DENTIST_VERIFICATION_STATUS.SUBMITTED, DENTIST_VERIFICATION_STATUS.UNDER_REVIEW]:
+                raise ValidationError(
+                    "Clinical Depth verification is already submitted and pending review."
+                )
+            elif not created and clinical_path.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+                raise ValidationError(
+                    "Clinical Depth verification has already been approved. You cannot update it."
+                )
+
+            materials = validated_data["materials"]
+            ProcedureMaterialVerification.objects.filter(
+                clinical_path=clinical_path
+            ).delete()
+
+            for item in materials:
+                own_procedure = item["own_procedure"]
+                ProcedureMaterialVerification.objects.create(
+                    clinical_path=clinical_path,
+                    own_procedure=own_procedure,
+                    brand_name=item["brand_name"],
+                    # ce_certificate=item.get("ce_certificate"),
+                    # material_brands=item.get("material_brands"),
+                    # invoice=item.get("invoice"),
+                    # protocol_pdf=item.get("protocol_pdf"),
+                    # notes=item.get("notes", "")
+                )
+            return clinical_path
 
 # ------------------------Dentist Verification------------------------
 # =====================================================================

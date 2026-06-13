@@ -74,7 +74,6 @@ class DentistProfileCreateUpdateSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-
 class DentistVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DentistVerification
@@ -84,16 +83,63 @@ class DentistVerificationSerializer(serializers.ModelSerializer):
 class DentistLicenseVerificationSerializer(serializers.ModelSerializer):
     # dentist = DentistProfileSerializer(read_only=True)
     # verification = DentistVerificationSerializer(read_only=True)
-
+        
     class Meta:
         model = DentistLicenseVerification
         fields = "__all__"
 
 
+
+# Clinical Operation Verification Phase-------------------------------------------------------------
 class SterilizationWalkthroughSerializer(serializers.ModelSerializer):
     class Meta:
         model = SterilizationWalkthrough
         fields = "__all__"
 
+class SterilizationVerificationSerializer(serializers.ModelSerializer):
+    walkthrough = SterilizationWalkthroughSerializer(read_only=True)
 
+    class Meta:
+        model = SterilizationVerification
+        fields = "__all__"
+
+class ProcedurePriceSerializer(serializers.ModelSerializer):
+    procedure_name = serializers.CharField(source="procedure.name", read_only=True)
+
+    class Meta:
+        model = ProcedurePrice
+        fields = "__all__"
+
+class NoSurpriseGuaranteeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NoSurpriseGuarantee
+        fields = "__all__"
+
+class ClinicalOperationVerificationSerializer(serializers.ModelSerializer):
+    sterilization_verification = SterilizationVerificationSerializer(read_only=True)
+    no_surprise_guarantee = NoSurpriseGuaranteeSerializer(read_only=True)
+    procedures_feature = ProcedurePriceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ClinicOperationVerification
+        fields = "__all__"
+# -----------------------------------------------------------------------------------------------------
+
+
+
+# Clinical Depth Verification Phase-------------------------------------------------------------------
+class ProcedureMaterialVerificationSerializer(serializers.ModelSerializer):
+    own_procedure = ProcedurePriceSerializer(read_only=True)
+
+    class Meta:
+        model = ProcedureMaterialVerification
+        fields = "__all__"
+
+class ClinicalPathVerificationSerializer(serializers.ModelSerializer):
+    procedure_material_verifications = (ProcedureMaterialVerificationSerializer(many=True, read_only=True))
+    
+    class Meta:
+        model = ClinicalPathVerification
+        fields = "__all__"
+# -----------------------------------------------------------------------------------------------------
 

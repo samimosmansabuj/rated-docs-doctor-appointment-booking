@@ -173,7 +173,7 @@ class NoSurpriseGuarantee(TimeStampedModel):
 # Clinical Procedure Verification Phase-----
 class ClinicalPathVerification(TimeStampedModel):
     # Relation Field---
-    clinic = models.OneToOneField(Clinic, on_delete=models.CASCADE, related_name="clinical_path_verification")
+    clinic = models.OneToOneField(Clinic, on_delete=models.CASCADE, related_name="clinical_path_verification", blank=True, null=True)
     dentist = models.OneToOneField(DentistProfile, on_delete=models.CASCADE, related_name="clinical_path_verification")
     verification = models.OneToOneField(DentistVerification, on_delete=models.CASCADE, related_name="clinical_path_verification")
     
@@ -182,7 +182,7 @@ class ClinicalPathVerification(TimeStampedModel):
     status = models.CharField(max_length=20, choices=DENTIST_VERIFICATION_STATUS.choices, default=DENTIST_VERIFICATION_STATUS.SUBMITTED)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
-    verified_by = models.ForeignKey(DentistProfile ,null=True, blank=True, on_delete=models.SET_NULL)
+    verified_by = models.ForeignKey("account.User",null=True, blank=True, on_delete=models.SET_NULL)
     reviewer_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True, null=True)
 
