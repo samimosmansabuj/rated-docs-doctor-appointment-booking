@@ -95,7 +95,7 @@ class ESTIMATE_REQUEST_STATUS(models.TextChoices):
 
 class CONSULTATION_STATUS(models.TextChoices):
     DRAFT = "draft", "Draft"
-    INTAKE_IN_PROGRESS = "intake_in_progress", "Intake In Progress"
+    SUBMITTED = "SUBMITTED", "Submitted"
     PENDING_REVIEW = "pending_review", "Pending Review"
     WAITING_FOR_SCHEDULING = "waiting_for_scheduling", "Waiting for Scheduling"
     SCHEDULED = "scheduled", "Scheduled"
@@ -105,6 +105,11 @@ class CONSULTATION_STATUS(models.TextChoices):
     ESTIMATE_RECEIVED = "estimate_received", "Estimate Received"
     CANCELLED = "cancelled", "Cancelled"
     REJECTED = "rejected", "Rejected"
+
+class LAST_VISIT_CHOICE(models.TextChoices):
+    MONTH_6 = "MONTH_6", "Less than 6 month age"
+    MONTH_12 = "MONTH_12", "6-2 month age"
+    MONTH_OVER_12 = "MONTH_OVER_12", "over a year age"
 
 class DENTAL_PHOTO_TYPE(models.TextChoices):
     FRONT_SMILE = "front_smile"

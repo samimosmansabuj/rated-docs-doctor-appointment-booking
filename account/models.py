@@ -46,7 +46,7 @@ class User(TimeStampedModel, AbstractBaseUser, PermissionsMixin, SoftDeleteModel
         ]
 
     def __str__(self):
-        return self.email
+        return f"{self.email} ({self.role})"
 
 class PatientProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="patient_profile")

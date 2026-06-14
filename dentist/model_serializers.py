@@ -43,7 +43,6 @@ class SlotExceptionSerializer(serializers.ModelSerializer):
         model = SlotException
         fields = "__all__"
 
-
 class DentistProfileSerializer(serializers.ModelSerializer):
     clinic = ClinicSerializer(read_only=True)
 

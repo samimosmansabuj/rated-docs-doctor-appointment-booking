@@ -8,6 +8,13 @@ class IsDentist(BasePermission):
             request.user.role == USER_ROLE_CHOICES.DENTIST
         )
 
+class IsPatient(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated and
+            request.user.role == USER_ROLE_CHOICES.PATIENT
+        )
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return (
