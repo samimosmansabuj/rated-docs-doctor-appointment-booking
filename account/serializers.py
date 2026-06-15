@@ -115,9 +115,9 @@ class LoginSerializer(serializers.Serializer):
         return True
 
     def get_profile_created(self, user):
-        if user.role == USER_ROLE_CHOICES.PATIENT and user.patient_profile:
+        if user.role == USER_ROLE_CHOICES.PATIENT and hasattr(user, "patient_profile"):
             return True
-        elif user.role == USER_ROLE_CHOICES.DENTIST and user.dentist_profile:
+        elif user.role == USER_ROLE_CHOICES.DENTIST and hasattr(user, "dentist_profile"):
             return True
         elif user.role == USER_ROLE_CHOICES.ADMIN:
             return True

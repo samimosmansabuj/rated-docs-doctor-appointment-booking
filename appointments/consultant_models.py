@@ -1,9 +1,9 @@
 from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
-from account.models import PatientProfile
+from account.models import PatientProfile, User
 from dentist.models import DentistProfile
 from core.models import Procedure
-from core.constants import VIDEO_SESSION_STATUS, DENTAL_PHOTO_TYPE, SCHEDULE_STATUS, CONSULTATION_STATUS, LAST_VISIT_CHOICE
+from core.constants import VIDEO_SESSION_STATUS, SCHEDULE_STATUS, CONSULTATION_STATUS, LAST_VISIT_CHOICE, RESCHEDULE_REQUEST_STATUS
 # from django.db.
 
 class Consultation(TimeStampedModel, SoftDeleteModel):
@@ -58,8 +58,15 @@ class VideoConsultationSession(TimeStampedModel):
     ended_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=VIDEO_SESSION_STATUS.choices, default=VIDEO_SESSION_STATUS.SCHEDULED)
 
+class ConsultationRescheduleRequest(TimeStampedModel):
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name="reschedule_requests")
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="consultation_reschedule_requests")
+    proposed_datetime = models.DateTimeField()
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=RESCHEDULE_REQUEST_STATUS.choices, default=RESCHEDULE_REQUEST_STATUS.PENDING)
+    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_reschedule_requests")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
-class ConsultationChangesRequest(TimeStampedModel):
-    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name="changes_request")
-    # related_object = 
+    class Meta:
+        ordering = ["-created_at"]
 

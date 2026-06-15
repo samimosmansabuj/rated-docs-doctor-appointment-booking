@@ -133,6 +133,11 @@ class VIDEO_SESSION_STATUS(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
     NO_SHOW = "no_show", "No Show"
 
+class RESCHEDULE_REQUEST_STATUS(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    ACCEPTED = "ACCEPTED", "Accepted"
+    REJECTED = "REJECTED", "Rejected"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 class TREATMENT_PLAN_STAGE(models.TextChoices):
