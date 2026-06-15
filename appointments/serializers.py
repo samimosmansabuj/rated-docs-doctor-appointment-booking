@@ -36,7 +36,7 @@ class ConsultationPatientInfoSerializer(serializers.Serializer):
             "country": self.validated_data["country"],
         }
 
-class ConsultationTreatmentInterestSerializer(serializers.Serializer):
+class ConsultationTreatmentInterestStep2Serializer(serializers.Serializer):
     procedures = serializers.PrimaryKeyRelatedField(queryset=Procedure.objects.all(), many=True)
 
     def get_consultation(self, patient):
@@ -56,7 +56,7 @@ class ConsultationTreatmentInterestSerializer(serializers.Serializer):
         consultation.save()
         return consultation
 
-class ConsultationBudgetTravelSerializer(serializers.Serializer):
+class ConsultationBudgetTravelStep3Serializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
     approximate_budget = serializers.DecimalField(max_digits=12, decimal_places=2)
     travel_start_date = serializers.DateField()
@@ -70,7 +70,7 @@ class ConsultationBudgetTravelSerializer(serializers.Serializer):
         consultation.save()
         return consultation
 
-class ConsultationDentalHistorySerializer(serializers.Serializer):
+class ConsultationDentalHistoryStep4Serializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
     last_dentist_visit = serializers.ChoiceField(choices=LAST_VISIT_CHOICE.choices)
     conditions = serializers.ListField(child=serializers.CharField())
@@ -88,7 +88,7 @@ class ConsultationDentalHistorySerializer(serializers.Serializer):
         )
         return consultation
 
-class ConsultationDentalPhotoSerializer(serializers.Serializer):
+class ConsultationDentalPhotoStep5Serializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
     front_smile = serializers.ImageField(required=False)
     wide_smile = serializers.ImageField(required=False)
@@ -119,7 +119,7 @@ class ConsultationDentalPhotoSerializer(serializers.Serializer):
         )
         return photo_count
 
-class ConsultationXraySerializer(serializers.Serializer):
+class ConsultationXrayStep6Serializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
     file = serializers.FileField()
     notes = serializers.CharField(required=False, allow_blank=True)
@@ -141,7 +141,7 @@ class ConsultationScheduleItemSerializer(serializers.Serializer):
     scheduled_date = serializers.DateField()
     scheduled_time = serializers.TimeField()
 
-class ConsultationScheduleSerializer(serializers.Serializer):
+class ConsultationScheduleStep7Serializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
     dentists = ConsultationScheduleItemSerializer(many=True, required=True)
 
@@ -249,7 +249,6 @@ class ConsultationScheduleSerializer(serializers.Serializer):
                     meeting_url="https://meet.google.com/sie-kfkk-wiv",
                     room_id="sie-kfkk-wiv",
                     started_at=scheduled_datetime,
-                    ended_at=scheduled_datetime+30,
                     status=VIDEO_SESSION_STATUS.SCHEDULED
                 )
 
@@ -263,7 +262,8 @@ class ConsultationScheduleSerializer(serializers.Serializer):
 
 class CreateRescheduleRequestSerializer(serializers.Serializer):
     consultation_id = serializers.IntegerField(write_only=True)
-    scheduled_at = serializers.DateTimeField()
+    scheduled_date = serializers.DateField()
+    scheduled_time = serializers.TimeField()
     timezone = serializers.CharField(required=False)
     reason = serializers.CharField(required=False, allow_blank=True)
 
@@ -280,10 +280,16 @@ class CreateRescheduleRequestSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
+        scheduled_datetime = datetime.combine(validated_data.get("scheduled_date"), validated_data.get("scheduled_time"))
+        if timezone.make_aware(scheduled_datetime) <= timezone.now():
+            raise serializers.ValidationError(
+                "Schedule time must be in the future."
+            )
         return ConsultationRescheduleRequest.objects.create(
             consultation=validated_data["consultation"],
             requested_by=self.context["request"].user,
-            proposed_datetime=validated_data["proposed_datetime"],
+            proposed_datetime=scheduled_datetime,
+            timezone=validated_data.get("timezone", "EST"),
             reason=validated_data.get("reason", "")
         )
 
@@ -328,7 +334,7 @@ class ConsultationPatientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PatientProfile
-        fields = ["id", "full_name", "date_of_birth", "gender", "country", "medical_notes"]
+        fields = ["id", "full_name", "date_of_birth", "country", "medical_notes"]
 
     def get_full_name(self, obj):
         return obj.user.get_full_name()
@@ -400,3 +406,104 @@ class ConsultationDetailsSerializer(serializers.ModelSerializer):
         ]
 
 # -----------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+# Treatment All Serializers------------------------------------------------------------------------
+from .models import TreatmentPlan, TreatmentPlanProcedure, Appointment, AppointmentDecision
+from core.constants import TREATMENT_PLAN_STAGE, APPOINTMENT_STATUS, APPOINTMENT_DECISION
+
+class TreatmentPlanProcedureCreateSerializer(serializers.Serializer):
+    procedure = serializers.PrimaryKeyRelatedField(queryset=Procedure.objects.all(), required=False, allow_null=True)
+    title = serializers.CharField(required=False, allow_blank=True)
+    estimated_cost = serializers.DecimalField(max_digits=12, decimal_places=2)
+    note = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get("procedure") and not attrs.get("title"):
+            raise serializers.ValidationError(
+                "Procedure or title is required."
+            )
+        return attrs
+
+class TreatmentPlanFileSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    file = serializers.FileField()
+
+class InitialTreatmentPlanCreateSerializer(serializers.Serializer):
+    consultation_id = serializers.IntegerField(write_only=True)
+    procedures = TreatmentPlanProcedureCreateSerializer(many=True)
+    total_cost = serializers.DecimalField(max_digits=12, decimal_places=2)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    other_information = serializers.CharField(required=False, allow_blank=True)
+
+    def create(self, validated_data):
+        dentist = self.context["request"].user.dentist_profile
+        consultation = Consultation.objects.get(id=self.validated_data["consultation_id"])
+        with transaction.atomic():
+            treatment_plan = TreatmentPlan.objects.create(
+                consultation=consultation,
+                created_by=dentist,
+                version=TREATMENT_PLAN_STAGE.INITIAL,
+                total_cost=validated_data["total_cost"],
+                notes=validated_data.get("notes", ""),
+                other_information=validated_data.get(
+                    "other_information",
+                    ""
+                )
+            )
+            for item in validated_data["procedures"]:
+                TreatmentPlanProcedure.objects.create(
+                    treatment_plan=treatment_plan,
+                    procedure=item.get("procedure"),
+                    title=item.get("title"),
+                    estimated_cost=item["estimated_cost"],
+                    note=item.get("note", "")
+                )
+            Appointment.objects.create(
+                consultation=consultation,
+                patient=consultation.patient,
+                dentist=dentist,
+                initial_treatment_plan=treatment_plan,
+                status=APPOINTMENT_STATUS.AWAITING_RESPONSE
+            )
+            consultation.status = CONSULTATION_STATUS.ESTIMATE_RECEIVED
+            consultation.save(update_fields=["status"])
+        return treatment_plan
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = "__all__"
+
+
+class AppointmentDecisionSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    decision = serializers.ChoiceField(choices=APPOINTMENT_DECISION.choices)
+    note = serializers.CharField(required=False, allow_blank=True)
+    signature_image = serializers.ImageField()
+
+    def create(self, validated_data):
+        patient = self.context["request"].user.patient_profile
+        appointment = Appointment.objects.get(id=validated_data["appointment_id"], patient=patient)
+        decision = AppointmentDecision.objects.create(
+            appointment=appointment,
+            decision=validated_data["decision"],
+            note=validated_data.get("note", ""),
+            signature_image=validated_data["signature_image"]
+        )
+        if validated_data["decision"] == APPOINTMENT_DECISION.APPROVED:
+            appointment.status = APPOINTMENT_STATUS.CONFIRMED
+        else:
+            appointment.status = APPOINTMENT_STATUS.CANCELLED
+        appointment.save(update_fields=["status"])
+        return decision
+
+# -----------------------------------------------------------------------------------------------------
+
+
+

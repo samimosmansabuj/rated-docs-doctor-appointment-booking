@@ -25,7 +25,7 @@ class ConsultationSchedule(TimeStampedModel):
     scheduled_at = models.DateTimeField(blank=True, null=True)
     re_scheduled_at = models.DateTimeField(blank=True, null=True)
     re_scheduled_confirm = models.BooleanField(blank=True, null=True)
-    timezone = models.CharField(max_length=50)
+    timezone = models.CharField(max_length=50, default="EST")
     duration_minutes = models.IntegerField(default=30)
     status = models.CharField(max_length=20, choices=SCHEDULE_STATUS.choices, default=SCHEDULE_STATUS.PENDING)
 
@@ -62,6 +62,7 @@ class ConsultationRescheduleRequest(TimeStampedModel):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name="reschedule_requests")
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="consultation_reschedule_requests")
     proposed_datetime = models.DateTimeField()
+    timezone = models.CharField(max_length=50, default="EST")
     reason = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=RESCHEDULE_REQUEST_STATUS.choices, default=RESCHEDULE_REQUEST_STATUS.PENDING)
     reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_reschedule_requests")

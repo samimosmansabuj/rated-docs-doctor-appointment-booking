@@ -6,9 +6,10 @@ from core.permissions import IsPatient, IsAdmin, IsDentist
 from rest_framework.permissions import IsAuthenticated
 from core.utils.views import OwnAPIView
 from .serializers import (
-    ConsultationPatientInfoSerializer, ConsultationTreatmentInterestSerializer, ConsultationBudgetTravelSerializer,
-    ConsultationDentalHistorySerializer, ConsultationDentalPhotoSerializer, ConsultationXraySerializer,
-    ConsultationScheduleSerializer, ConsultationDetailsSerializer, CreateRescheduleRequestSerializer
+    ConsultationPatientInfoSerializer, ConsultationTreatmentInterestStep2Serializer, ConsultationBudgetTravelStep3Serializer,
+    ConsultationDentalHistoryStep4Serializer, ConsultationDentalPhotoStep5Serializer, ConsultationXrayStep6Serializer, ConsultationScheduleStep7Serializer,
+    
+    ConsultationDetailsSerializer, CreateRescheduleRequestSerializer
 )
 from django.utils import timezone
 from rest_framework.decorators import action
@@ -52,7 +53,7 @@ class ConsultationPatientInfoAPIView(OwnAPIView):
 
 class ConsultationTreatmentInterestAPIView(ConsultationMixin, OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationTreatmentInterestSerializer
+    serializer_class = ConsultationTreatmentInterestStep2Serializer
 
     def get(self, request):
         user = request.user
@@ -78,7 +79,7 @@ class ConsultationTreatmentInterestAPIView(ConsultationMixin, OwnAPIView):
 
 class ConsultationBudgetTravelAPIView(ConsultationMixin, OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationBudgetTravelSerializer
+    serializer_class = ConsultationBudgetTravelStep3Serializer
 
     def get(self, request):
         user = request.user
@@ -103,7 +104,7 @@ class ConsultationBudgetTravelAPIView(ConsultationMixin, OwnAPIView):
 
 class ConsultationDentalHistoryAPIView(ConsultationMixin, OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationDentalHistorySerializer
+    serializer_class = ConsultationDentalHistoryStep4Serializer
 
     def get(self, request):
         user = request.user
@@ -128,7 +129,7 @@ class ConsultationDentalHistoryAPIView(ConsultationMixin, OwnAPIView):
 
 class ConsultationDentalPhotoAPIView(ConsultationMixin, OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationDentalPhotoSerializer
+    serializer_class = ConsultationDentalPhotoStep5Serializer
 
     def get(self, request):
         user = request.user
@@ -153,7 +154,7 @@ class ConsultationDentalPhotoAPIView(ConsultationMixin, OwnAPIView):
 
 class ConsultationXrayAPIView(ConsultationMixin, OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationXraySerializer
+    serializer_class = ConsultationXrayStep6Serializer
 
     def get(self, request):
         user = request.user
@@ -178,7 +179,7 @@ class ConsultationXrayAPIView(ConsultationMixin, OwnAPIView):
 
 class ConsultationScheduleAPIView(OwnAPIView):
     permission_classes = [IsPatient]
-    serializer_class = ConsultationScheduleSerializer
+    serializer_class = ConsultationScheduleStep7Serializer
 
     def success_response(self, serializer):
         consultations = serializer.save()
@@ -220,15 +221,16 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
     
     @action(detail=True, methods=["post"], url_path="re-schedule")
     def re_schedule(self, request, pk=None):
-        serializer = CreateRescheduleRequestSerializer(data=request.data)
+        data = request.data.copy()
+        data["consultation_id"] = pk
+        serializer = CreateRescheduleRequestSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
         serializer.save()
         return custom_response(
             success=True,
-            message="Reschedule request submitted.",
-            data=serializer.data
+            message="Reschedule request submitted."
         )
-        
-    
+
 class ConsultationViewSet(OwnReadOnlyModelViewSet):
     permission_classes = [IsAdmin]
     serializer_class = ConsultationDetailsSerializer
@@ -264,6 +266,13 @@ class DentistConsultationViewSet(OwnReadOnlyModelViewSet):
             )
             .order_by("-created_at")
         )
+    
+    @action(detail=True, methods=["post"], url_path="create-estimate")
+    def create_estimate(self, request, pk=None):
+        return custom_response(
+            success=True,
+            message="Estimate Create successfully."
+        ) 
     
     @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):

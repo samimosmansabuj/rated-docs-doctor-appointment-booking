@@ -55,6 +55,7 @@ class EscrowPayment(TimeStampedModel):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="USD")
     status = models.CharField(max_length=30, choices=PAYMENT_STATUS.choices, default=PAYMENT_STATUS.PENDING)
+    payment_details = models.JSONField(blank=True, null=True, default={})
     paid_at = models.DateTimeField(null=True, blank=True)
 
 class ArrivalVerification(TimeStampedModel):

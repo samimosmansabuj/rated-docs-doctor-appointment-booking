@@ -25,7 +25,7 @@ class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
     role = serializers.CharField(write_only=True)
-    referral_code = serializers.CharField(required=False)
+    referral_code = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
