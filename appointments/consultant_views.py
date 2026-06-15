@@ -8,7 +8,7 @@ from core.utils.views import OwnAPIView
 from .serializers import (
     ConsultationPatientInfoSerializer, ConsultationTreatmentInterestSerializer, ConsultationBudgetTravelSerializer,
     ConsultationDentalHistorySerializer, ConsultationDentalPhotoSerializer, ConsultationXraySerializer,
-    ConsultationScheduleSerializer, ConsultationDetailsSerializer
+    ConsultationScheduleSerializer, ConsultationDetailsSerializer, CreateRescheduleRequestSerializer
 )
 from django.utils import timezone
 from rest_framework.decorators import action
@@ -218,6 +218,17 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
             .order_by("-created_at")
         )
     
+    @action(detail=True, methods=["post"], url_path="re-schedule")
+    def re_schedule(self, request, pk=None):
+        serializer = CreateRescheduleRequestSerializer(data=request.data)
+        serializer.save()
+        return custom_response(
+            success=True,
+            message="Reschedule request submitted.",
+            data=serializer.data
+        )
+        
+    
 class ConsultationViewSet(OwnReadOnlyModelViewSet):
     permission_classes = [IsAdmin]
     serializer_class = ConsultationDetailsSerializer
@@ -254,21 +265,17 @@ class DentistConsultationViewSet(OwnReadOnlyModelViewSet):
             .order_by("-created_at")
         )
     
-    
     @action(detail=True, methods=["post"])
     def accept(self, request, pk=None):
         consultation = self.get_object()
-
         consultation.status = CONSULTATION_STATUS.SCHEDULED
         consultation.save(update_fields=["status"])
-
         VideoConsultationSession.objects.get_or_create(
             consultation=consultation,
             defaults={
                 "status": VIDEO_SESSION_STATUS.SCHEDULED
             }
         )
-
         return custom_response(
             success=True,
             message="Consultation accepted successfully."

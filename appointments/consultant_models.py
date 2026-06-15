@@ -66,6 +66,12 @@ class ConsultationRescheduleRequest(TimeStampedModel):
     status = models.CharField(max_length=20, choices=RESCHEDULE_REQUEST_STATUS.choices, default=RESCHEDULE_REQUEST_STATUS.PENDING)
     reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_reschedule_requests")
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    @property
+    def is_user(self):
+        requested_by = self.requested_by
+        return requested_by.role
+            
 
     class Meta:
         ordering = ["-created_at"]

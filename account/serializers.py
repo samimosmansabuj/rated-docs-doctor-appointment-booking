@@ -25,10 +25,11 @@ class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
     role = serializers.CharField(write_only=True)
+    referral_code = serializers.CharField(required=False)
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone", "email", "password", "confirm_password", "role"]
+        fields = ["first_name", "last_name", "phone", "email", "gender", "password", "confirm_password", "role", "referral_code"]
     
     def validate_role(self, value):
         value = value.upper()
@@ -58,6 +59,7 @@ class SignupSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             password = validated_data.pop("password")
             validated_data.pop("confirm_password", None)
+            validated_data.pop("referral_code", None)
             role = validated_data.pop("role")
             if role not in USER_ROLE_CHOICES.values: raise ValidationError("Invalid Role.")
             user = User.objects.create_user(**validated_data, password=password)

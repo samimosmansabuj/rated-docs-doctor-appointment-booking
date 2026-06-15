@@ -1,7 +1,8 @@
+from django.shortcuts import get_object_or_404
 from datetime import datetime
 from account.models import PatientProfile
 from rest_framework import serializers
-from .consultant_models import Consultation, ConsultationDentalHistory, ConsultationDentalPhoto, ConsultationXRay, ConsultationSchedule, VideoConsultationSession
+from .consultant_models import Consultation, ConsultationDentalHistory, ConsultationDentalPhoto, ConsultationXRay, ConsultationSchedule, VideoConsultationSession, ConsultationRescheduleRequest, RESCHEDULE_REQUEST_STATUS
 from core.constants import CONSULTATION_STATUS, LAST_VISIT_CHOICE, SCHEDULE_STATUS, VIDEO_SESSION_STATUS
 from core.models import Procedure
 from dentist.models import DentistProfile
@@ -259,16 +260,63 @@ class ConsultationScheduleSerializer(serializers.Serializer):
             consultation.delete()
             return created_consultations
 
-class ConsultationRescheduleSerializer(serializers.Serializer):
+
+class CreateRescheduleRequestSerializer(serializers.Serializer):
+    consultation_id = serializers.IntegerField(write_only=True)
     scheduled_at = serializers.DateTimeField()
     timezone = serializers.CharField(required=False)
+    reason = serializers.CharField(required=False, allow_blank=True)
 
-    def validate_scheduled_at(self, value):
-        if value <= timezone.now():
+    def validate(self, attrs):
+        user = self.context["request"].user
+        consultation = get_object_or_404(Consultation, id=attrs["consultation_id"])
+        is_patient = (hasattr(user, "patient_profile") and consultation.patient == user.patient_profile)
+        is_dentist = (hasattr(user, "dentist_profile") and consultation.dentist == user.dentist_profile)
+        if not (is_patient or is_dentist):
             raise serializers.ValidationError(
-                "Reschedule time must be in the future."
+                "You are not allowed for this consultation."
             )
-        return value
+        attrs["consultation"] = consultation
+        return attrs
+
+    def create(self, validated_data):
+        return ConsultationRescheduleRequest.objects.create(
+            consultation=validated_data["consultation"],
+            requested_by=self.context["request"].user,
+            proposed_datetime=validated_data["proposed_datetime"],
+            reason=validated_data.get("reason", "")
+        )
+
+class RescheduleDecisionSerializer(serializers.Serializer):
+    request_id = serializers.IntegerField()
+    action = serializers.ChoiceField(choices=["accept", "reject"])
+
+    def save(self):
+        user = self.context["request"].user
+        request_obj = get_object_or_404(ConsultationRescheduleRequest, id=self.validated_data["request_id"], status=RESCHEDULE_REQUEST_STATUS.PENDING)
+        consultation = request_obj.consultation
+        is_patient = (hasattr(user, "patient_profile") and consultation.patient == user.patient_profile)
+        is_dentist = (hasattr(user, "dentist_profile") and consultation.dentist == user.dentist_profile)
+        if not (is_patient or is_dentist):
+            raise serializers.ValidationError(
+                "Permission denied."
+            )
+        
+        action = self.validated_data["action"]
+        if action == "reject":
+            request_obj.status = RESCHEDULE_REQUEST_STATUS.REJECTED
+        elif action == "accept":
+            request_obj.status = RESCHEDULE_REQUEST_STATUS.ACCEPTED 
+            schedule = consultation.schedule
+            schedule.re_scheduled_at = schedule.scheduled_at
+            schedule.scheduled_at = request_obj.proposed_datetime
+            schedule.re_scheduled_confirm = True
+            schedule.save()
+
+        request_obj.reviewed_by = user
+        request_obj.reviewed_at = timezone.now()
+        request_obj.save()
+        return request_obj
 
 # -----------------------------------------------------------------------------------------------------
 

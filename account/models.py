@@ -13,6 +13,7 @@ class User(TimeStampedModel, AbstractBaseUser, PermissionsMixin, SoftDeleteModel
     email = models.EmailField(max_length=255, unique=True, db_index=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     role = models.CharField(max_length=10, choices=USER_ROLE_CHOICES.choices)
+    gender = models.CharField(max_length=20, choices=USER_GENDER, blank=True, null=True)
     
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
     last_device_info = models.TextField(blank=True, null=True)
@@ -51,7 +52,6 @@ class User(TimeStampedModel, AbstractBaseUser, PermissionsMixin, SoftDeleteModel
 class PatientProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="patient_profile")
     date_of_birth = models.DateField(blank=True, null=True)
-    gender = models.CharField(max_length=20, choices=USER_GENDER)
     country = models.CharField(max_length=100)
     medical_notes = models.TextField(blank=True)
     
