@@ -3,12 +3,19 @@ from .consultant_views import (
     ConsultationPatientInfoAPIView, ConsultationTreatmentInterestAPIView,
     ConsultationBudgetTravelAPIView, ConsultationDentalHistoryAPIView, ConsultationDentalPhotoAPIView,
     ConsultationXrayAPIView, ConsultationScheduleAPIView,
-    MyConsultationViewSet
+    MyConsultationViewSet, ConsultationViewSet, DentistConsultationViewSet
 )
 from rest_framework.routers import DefaultRouter
 
-consultations_router = DefaultRouter()
-consultations_router.register("consultations", MyConsultationViewSet, basename="patient-consultations")
+patient_router = DefaultRouter()
+patient_router.register("consultations", MyConsultationViewSet, basename="patient-consultations")
+
+admin_router = DefaultRouter()
+admin_router.register("consultations", ConsultationViewSet, basename="admin-consultations")
+
+dentist_router = DefaultRouter()
+dentist_router.register("consultations", DentistConsultationViewSet, basename="dentist-consultations")
+
 
 urlpatterns = [
     path("consultations/step-1/", ConsultationPatientInfoAPIView.as_view()),
@@ -19,6 +26,8 @@ urlpatterns = [
     path("consultations/step-6/", ConsultationXrayAPIView.as_view()),
     path("consultations/step-7/", ConsultationScheduleAPIView.as_view()),
     
-    path("patient/", include(consultations_router.urls))
+    path("patient/", include(patient_router.urls)),
+    path("admin/", include(admin_router.urls)),
+    path("dentist/", include(dentist_router.urls)),
 ]
 

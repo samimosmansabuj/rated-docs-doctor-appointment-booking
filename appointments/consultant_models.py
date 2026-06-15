@@ -4,6 +4,7 @@ from account.models import PatientProfile
 from dentist.models import DentistProfile
 from core.models import Procedure
 from core.constants import VIDEO_SESSION_STATUS, DENTAL_PHOTO_TYPE, SCHEDULE_STATUS, CONSULTATION_STATUS, LAST_VISIT_CHOICE
+# from django.db.
 
 class Consultation(TimeStampedModel, SoftDeleteModel):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="consultations")
@@ -55,6 +56,10 @@ class VideoConsultationSession(TimeStampedModel):
     room_id = models.CharField(max_length=255, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=VIDEO_SESSION_STATUS.choices, default="scheduled")
+    status = models.CharField(max_length=20, choices=VIDEO_SESSION_STATUS.choices, default=VIDEO_SESSION_STATUS.SCHEDULED)
 
+
+class ConsultationChangesRequest(TimeStampedModel):
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name="changes_request")
+    # related_object = 
 

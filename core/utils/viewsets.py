@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from django.db import transaction
 
+
+
 class OwnModelViewSet(ModelViewSet):
     delete_message = "Object Deleted."
     model = None
@@ -209,6 +211,7 @@ class OwnReadOnlyModelViewSet(ReadOnlyModelViewSet):
                 return self.get_paginated_response(serializer.data)
             serializer = self.get_serializer(queryset, many=True)
             return self.list_success_response(serializer)
+        # except notfoud
         except Exception as e:
             return Response(
                 {

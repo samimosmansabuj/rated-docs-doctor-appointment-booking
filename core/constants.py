@@ -95,11 +95,8 @@ class ESTIMATE_REQUEST_STATUS(models.TextChoices):
 
 class CONSULTATION_STATUS(models.TextChoices):
     DRAFT = "draft", "Draft"
-    SUBMITTED = "SUBMITTED", "Submitted"
-    PENDING_REVIEW = "pending_review", "Pending Review"
-    WAITING_FOR_SCHEDULING = "waiting_for_scheduling", "Waiting for Scheduling"
+    # WAITING_FOR_SCHEDULING = "waiting_for_scheduling", "Waiting for Scheduling"
     SCHEDULED = "scheduled", "Scheduled"
-    IN_PROGRESS = "in_progress", "In Progress"
     COMPLETED = "completed", "Completed"
     ESTIMATE_PENDING = "estimate_pending", "Estimate Pending"
     ESTIMATE_RECEIVED = "estimate_received", "Estimate Received"
@@ -134,7 +131,7 @@ class VIDEO_SESSION_STATUS(models.TextChoices):
     ENDED = "ended", "Ended"
     FAILED = "failed", "Failed"
     CANCELLED = "cancelled", "Cancelled"
-    RECONNECTED = "reconnected", "Reconnected"
+    NO_SHOW = "no_show", "No Show"
 
 
 

@@ -8,7 +8,7 @@ from dentist.models import DentistProfile
 from django.db import transaction
 from django.utils import timezone
 
-# Consultation All Serializers-------------------------------------------------------------
+# Consultation All Serializers------------------------------------------------------------------------
 class ConsultationPatientInfoSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
@@ -259,11 +259,22 @@ class ConsultationScheduleSerializer(serializers.Serializer):
             consultation.delete()
             return created_consultations
 
+class ConsultationRescheduleSerializer(serializers.Serializer):
+    scheduled_at = serializers.DateTimeField()
+    timezone = serializers.CharField(required=False)
+
+    def validate_scheduled_at(self, value):
+        if value <= timezone.now():
+            raise serializers.ValidationError(
+                "Reschedule time must be in the future."
+            )
+        return value
+
 # -----------------------------------------------------------------------------------------------------
 
 
 
-
+# Consultation Details Serializers------------------------------------------------------------------------
 class ConsultationPatientSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
 
@@ -340,3 +351,4 @@ class ConsultationDetailsSerializer(serializers.ModelSerializer):
             "created_at", "updated_at",
         ]
 
+# -----------------------------------------------------------------------------------------------------

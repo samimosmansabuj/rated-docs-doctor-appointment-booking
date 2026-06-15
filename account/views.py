@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import ResendOTPSerializer, SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
+from core.constants import USER_ROLE_CHOICES
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from core.permissions import IsDentist
@@ -17,7 +18,7 @@ class SignupAPIView(OwnAPIView):
     
     def success_response(self, serializer):
         user = serializer.save()
-        serializer.send_otp(user)
+        serializer.send_otp(user)        
         return custom_response(
             success=True,
             message="User created successfully",

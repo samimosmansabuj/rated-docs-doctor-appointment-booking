@@ -114,6 +114,16 @@ class LoginSerializer(serializers.Serializer):
             raise ValidationError(f"This user is not {role}")
         return True
 
+    def get_profile_created(self, user):
+        if user.role == USER_ROLE_CHOICES.PATIENT and user.patient_profile:
+            return True
+        elif user.role == USER_ROLE_CHOICES.DENTIST and user.dentist_profile:
+            return True
+        elif user.role == USER_ROLE_CHOICES.ADMIN:
+            return True
+        else:
+            return False
+    
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
@@ -128,6 +138,7 @@ class LoginSerializer(serializers.Serializer):
         return {
             "user": UserSerializer(user).data,
             "role": user.role,
+            "profile_created": self.get_profile_created(user),
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }
