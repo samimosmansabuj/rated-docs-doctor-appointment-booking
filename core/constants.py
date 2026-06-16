@@ -100,6 +100,7 @@ class CONSULTATION_STATUS(models.TextChoices):
     COMPLETED = "completed", "Completed"
     ESTIMATE_PENDING = "estimate_pending", "Estimate Pending"
     ESTIMATE_RECEIVED = "estimate_received", "Estimate Received"
+    TREATMENT_ACCEPT = "treatment_accept", "Treatment Accept"
     CANCELLED = "cancelled", "Cancelled"
     REJECTED = "rejected", "Rejected"
 
@@ -158,13 +159,14 @@ class TREATMENT_RESULT_PHOTO_TYPE(models.TextChoices):
 
 class APPOINTMENT_STATUS(models.TextChoices):
     AWAITING_RESPONSE = "AWAITING_RESPONSE", "Awaiting Response"
-    REJECTED = "REJECTED", "Rejected"
+    AWAITTING_FOR_PAYMENT = "AWAITTING_FOR_PAYMENT", "Awaitting For Payment"
     CONFIRMED = "CONFIRMED", "Confirmed"
     ARRIVED = "ARRIVED", "Arrived"
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
     FINAL_ESTIMATE_SUBMIT = "final_estimate_submit", "Final Estimate Submit"
     PAYMENT_RELEASE_PENDING = "PAYMENT_RELEASE_PENDING", "Payment Release Pending"
     COMPLETED = "COMPLETED", "Completed"
+    REJECTED = "REJECTED", "Rejected"
     CANCELLED = "CANCELLED", "Cancelled"
 
 class PAYMENT_STATUS(models.TextChoices):

@@ -10,7 +10,7 @@ class Consultation(TimeStampedModel, SoftDeleteModel):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="consultations")
     dentist = models.ForeignKey(DentistProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="consultations")
     status = models.CharField(max_length=30, choices=CONSULTATION_STATUS.choices, default=CONSULTATION_STATUS.DRAFT)
-    treatment_interest = models.ManyToManyField(Procedure, blank=True, null=True)
+    treatment_interest = models.ManyToManyField(Procedure, blank=True)
 
     # rough_budget_min = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     # rough_budget_max = models.DecimalField(max_digits=12, decimal_places=2, null=True)

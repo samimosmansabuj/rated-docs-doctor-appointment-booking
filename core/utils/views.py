@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import CreateAPIView
+from django.db import transaction
 
 class OwnAPIView(APIView):
     serializer_class = None
@@ -49,7 +51,6 @@ class OwnAPIView(APIView):
                 return self.success_response(serializer)
             return self.success_response()
         except ValidationError as e:
-            
             return self.serializer_error_response(
                 serializer=locals().get("serializer"),
                 error=e
@@ -61,5 +62,57 @@ class OwnAPIView(APIView):
                     "detail": str(e)
                 }, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class BaseCreateAPIView(CreateAPIView):
+    success_message = "Created successfully"
+    
+    def success_response(self, serializer) -> Response:
+        serializer.save()
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                "success": True,
+                "message": self.success_message
+            }, status=status.HTTP_201_CREATED, headers=headers
+        )
+
+    def serializer_error_response(self, serializer=None, error=None) -> Response:
+        if serializer and serializer.errors:
+            detail = {
+                key: str(value[0]) if isinstance(value, list) else str(value)
+                for key, value in serializer.errors.items()
+            }
+        elif error:
+            detail = error.detail if hasattr(error, "detail") else str(error)
+        else:
+            detail = "Validation error."
+        return Response(
+            {
+                "success": False,
+                "detail": detail
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                return self.success_response(serializer)
+        except ValidationError as e:
+            return self.serializer_error_response(
+                serializer=locals().get("serializer"),
+                error=e
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "detail": str(e)
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+        
 
 

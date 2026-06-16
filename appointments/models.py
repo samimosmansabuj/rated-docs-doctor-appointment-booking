@@ -5,6 +5,7 @@ from dentist.models import DentistProfile
 from core.constants import TREATMENT_PLAN_STAGE, APPOINTMENT_DECISION, FINAL_TREATMENT_DECISION_STATUS, TREATMENT_RESULT_PHOTO_TYPE, APPOINTMENT_STATUS, PAYMENT_STATUS, REFUND_STATUS, REFUND_TYPE, REFUND_REASON
 from .consultant_models import Consultation
 from core.models import Procedure
+import uuid
 
 
 # Treatment Plan Estimate Plan Models--------
@@ -12,7 +13,7 @@ class TreatmentPlan(TimeStampedModel, SoftDeleteModel):
     consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name="treatment_plans")
     created_by = models.ForeignKey(DentistProfile, on_delete=models.SET_NULL, null=True, related_name="treatment_plans")
     version = models.CharField(max_length=20, choices=TREATMENT_PLAN_STAGE.choices)
-    total_cost = models.DecimalField(max_digits=12, decimal_places=2)
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     notes = models.TextField(blank=True)
     other_information = models.TextField(blank=True)
     is_patient_approved = models.BooleanField(default=False)
@@ -52,11 +53,31 @@ class AppointmentDecision(TimeStampedModel):
 
 class EscrowPayment(TimeStampedModel):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="escrow_payment")
+    patient = models.ForeignKey(PatientProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name="payments")
+    
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="USD")
     status = models.CharField(max_length=30, choices=PAYMENT_STATUS.choices, default=PAYMENT_STATUS.PENDING)
-    payment_details = models.JSONField(blank=True, null=True, default={})
     paid_at = models.DateTimeField(null=True, blank=True)
+    
+    refunded_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    payment_provider = models.CharField(max_length=50, blank=True, null=True)
+    payment_details = models.JSONField(default=dict)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    
+    provider_transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    transaction_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
+
+    invoice_url = models.CharField(max_length=255, blank=True, null=True)
+    receipt_url = models.CharField(max_length=255, blank=True, null=True)
+    failure_reason = models.TextField(blank=True, null=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = f"PAY-{uuid.uuid4()}"
+        if not self.stripe_subscription_id:
+            self.stripe_subscription_id = str(uuid.uuid4())
+        super().save(*args, **kwargs)
 
 class ArrivalVerification(TimeStampedModel):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="arrival_verification")

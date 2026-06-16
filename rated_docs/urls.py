@@ -45,8 +45,8 @@ urlpatterns = [
     path("api/v1/", include("analytics.urls")),
     path("api/v1/", include("appointments.urls")),
     path("api/v1/", include("chat_notify.urls")),
-    path("api/v1/", include("core.urls")),
     path("api/v1/", include("dentist.urls")),
+    path("", include("core.urls")),
     
     
     # API schema

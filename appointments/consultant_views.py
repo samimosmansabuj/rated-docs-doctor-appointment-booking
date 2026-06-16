@@ -1,18 +1,12 @@
 from core.utils.response import custom_response
-from core.utils.viewsets import OwnReadOnlyModelViewSet
-from .consultant_models import Consultation, VideoConsultationSession
-from core.constants import CONSULTATION_STATUS, VIDEO_SESSION_STATUS
-from core.permissions import IsPatient, IsAdmin, IsDentist
-from rest_framework.permissions import IsAuthenticated
+from .consultant_models import Consultation
+from core.constants import CONSULTATION_STATUS
+from core.permissions import IsPatient
 from core.utils.views import OwnAPIView
-from .serializers import (
+from .serializers.serializers import (
     ConsultationPatientInfoSerializer, ConsultationTreatmentInterestStep2Serializer, ConsultationBudgetTravelStep3Serializer,
     ConsultationDentalHistoryStep4Serializer, ConsultationDentalPhotoStep5Serializer, ConsultationXrayStep6Serializer, ConsultationScheduleStep7Serializer,
-    
-    ConsultationDetailsSerializer, CreateRescheduleRequestSerializer
 )
-from django.utils import timezone
-from rest_framework.decorators import action
 
 
 class ConsultationMixin:
@@ -200,92 +194,3 @@ class ConsultationScheduleAPIView(OwnAPIView):
 
 
 
-class MyConsultationViewSet(OwnReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = ConsultationDetailsSerializer
-
-    def get_queryset(self):
-        return (
-            Consultation.objects
-            .filter(
-                patient__user=self.request.user
-            )
-            .select_related(
-                "patient__user", "dentist__user", "schedule", "dental_photo", "xrays", "dental_history", "video_session",
-            )
-            .prefetch_related(
-                "treatment_interest",
-            )
-            .order_by("-created_at")
-        )
-    
-    @action(detail=True, methods=["post"], url_path="re-schedule")
-    def re_schedule(self, request, pk=None):
-        data = request.data.copy()
-        data["consultation_id"] = pk
-        serializer = CreateRescheduleRequestSerializer(data=data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return custom_response(
-            success=True,
-            message="Reschedule request submitted."
-        )
-
-class ConsultationViewSet(OwnReadOnlyModelViewSet):
-    permission_classes = [IsAdmin]
-    serializer_class = ConsultationDetailsSerializer
-
-    queryset = (
-        Consultation.objects
-        .select_related(
-            "patient__user", "dentist__user", "schedule", "dental_photo", "xrays", "dental_history", "video_session",
-        )
-        .prefetch_related(
-            "treatment_interest",
-        )
-        .order_by("-created_at")
-    )
-
-class DentistConsultationViewSet(OwnReadOnlyModelViewSet):
-    permission_classes = [IsDentist]
-    serializer_class = ConsultationDetailsSerializer
-
-    def get_queryset(self):
-        dentist = self.request.user.dentist_profile
-
-        return (
-            Consultation.objects
-            .filter(
-                dentist=dentist
-            )
-            .select_related(
-                "patient__user", "dentist__user", "schedule", "dental_photo", "xrays", "dental_history", "video_session",
-            )
-            .prefetch_related(
-                "treatment_interest",
-            )
-            .order_by("-created_at")
-        )
-    
-    @action(detail=True, methods=["post"], url_path="create-estimate")
-    def create_estimate(self, request, pk=None):
-        return custom_response(
-            success=True,
-            message="Estimate Create successfully."
-        ) 
-    
-    @action(detail=True, methods=["post"])
-    def accept(self, request, pk=None):
-        consultation = self.get_object()
-        consultation.status = CONSULTATION_STATUS.SCHEDULED
-        consultation.save(update_fields=["status"])
-        VideoConsultationSession.objects.get_or_create(
-            consultation=consultation,
-            defaults={
-                "status": VIDEO_SESSION_STATUS.SCHEDULED
-            }
-        )
-        return custom_response(
-            success=True,
-            message="Consultation accepted successfully."
-        )
