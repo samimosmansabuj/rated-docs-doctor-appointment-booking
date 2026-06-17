@@ -3,8 +3,13 @@ from rest_framework.exceptions import ValidationError
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
 from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification
-from dentist.serializers import ClinicalOperationVerificationSubmitSerializer, DentistLicenseVerificationSubmitSerializer, ClinicalPathVerificationSubmitSerializer
-from .model_serializers import ClinicalOperationVerificationSerializer, ClinicalPathVerificationSerializer, DentistLicenseVerificationSerializer
+from .serializer.serializers import (
+    # Submit
+    ClinicalOperationVerificationSubmitSerializer, DentistLicenseVerificationSubmitSerializer, ClinicalPathVerificationSubmitSerializer, 
+    
+    # View
+    ClinicalOperationVerificationSerializer, ClinicalPathVerificationSerializer, DentistLicenseVerificationSerializer
+)
 from rest_framework.parsers import MultiPartParser, FormParser
 
 class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
@@ -52,8 +57,7 @@ class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
 class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
     permission_classes = [IsDentist]
     serializer_class = ClinicalOperationVerificationSubmitSerializer
-    parser_classes = [MultiPartParser, FormParser]
-
+    
     def success_response(self, serializer):
         serializer.save()
 

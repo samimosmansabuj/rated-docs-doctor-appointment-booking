@@ -1,17 +1,11 @@
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 from django.utils import timezone
-from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES
+from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS
 from core.models import LicenseRegistrationAuthority, Procedure
 from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, SterilizationWalkthrough
 from django.db import transaction
 
-class DentistVerificationProgressSerializer(serializers.Serializer):
-    current_phase = serializers.CharField()
-    current_phase_label = serializers.CharField()
-    progress_percentage = serializers.IntegerField()
-    is_verified = serializers.BooleanField()
-    steps = serializers.ListField()
 
 class DentistVerificationPhaseUpdateSerializer(serializers.Serializer):
     verification_phase = serializers.ChoiceField(choices=DENTIST_VERIFICATION_PHASE.choices)
@@ -27,10 +21,96 @@ class DentistVerificationPhaseUpdateSerializer(serializers.Serializer):
         profile.save()
         return profile
 
+class DentistVerificationStatusSerializer(serializers.Serializer):
+    current_phase = serializers.SerializerMethodField()
+    next_phase = serializers.SerializerMethodField()
+    progress_percentage = serializers.SerializerMethodField()
+    is_verified = serializers.SerializerMethodField()
+    steps = serializers.SerializerMethodField()
 
+    PHASE_LABELS = {
+        DENTIST_VERIFICATION_PHASE.ONE: "License Verification",
+        DENTIST_VERIFICATION_PHASE.TWO: "Operations Verification",
+        DENTIST_VERIFICATION_PHASE.THREE: "Clinical Verification",
+        DENTIST_VERIFICATION_PHASE.COMPLETE: "Verification Complete",
+    }
+    
+    def _phase_status_map(self, verification):
+        return {
+            DENTIST_VERIFICATION_PHASE.ONE: verification.license_verification,
+            DENTIST_VERIFICATION_PHASE.TWO: verification.operations_verification,
+            DENTIST_VERIFICATION_PHASE.THREE: verification.clinical_verification,
+            DENTIST_VERIFICATION_PHASE.COMPLETE: VERIFICATION_STATUS.APPROVED,
+        }
 
+    def get_current_phase(self, obj):
+        verification = obj.dentist_verification
+        status_map = self._phase_status_map(verification)
+        return {
+            "phase": obj.verification_phase,
+            "label": self.PHASE_LABELS.get(obj.verification_phase),
+            "status": status_map.get(obj.verification_phase),
+        }
+    
+    def get_next_phase(self, obj):
+        phase_order = [DENTIST_VERIFICATION_PHASE.ONE, DENTIST_VERIFICATION_PHASE.TWO, DENTIST_VERIFICATION_PHASE.THREE]
+        if obj.verification_phase == DENTIST_VERIFICATION_PHASE.COMPLETE:
+            return None
+        try:
+            current_index = phase_order.index(obj.verification_phase)
+            next_phase = phase_order[current_index + 1]
+            return {"phase": next_phase, "label": self.PHASE_LABELS[next_phase]}
+        except (ValueError, IndexError):
+            return None
+    
+    # def get_next_phase(self, obj):
+    #     verification = obj.dentist_verification
+    #     if (verification.license_verification != VERIFICATION_STATUS.APPROVED):
+    #         return {"phase": DENTIST_VERIFICATION_PHASE.ONE, "label": "License Verification"}
+    #     if (verification.operations_verification != VERIFICATION_STATUS.APPROVED):
+    #         return {"phase": DENTIST_VERIFICATION_PHASE.TWO, "label": "Operations Verification"}
+    #     if (verification.clinical_verification != VERIFICATION_STATUS.APPROVED):
+    #         return {"phase": DENTIST_VERIFICATION_PHASE.THREE, "label": "Clinical Verification"}
+    #     return None
+    
+    def get_progress_percentage(self, obj):
+        verification = obj.dentist_verification
+        approved_count = sum([
+            verification.license_verification == VERIFICATION_STATUS.APPROVED,
+            verification.operations_verification == VERIFICATION_STATUS.APPROVED,
+            verification.clinical_verification == VERIFICATION_STATUS.APPROVED,
+        ])
+        return int((approved_count / 3) * 100)
 
+    def get_is_verified(self, obj):
+        verification = obj.dentist_verification
 
+        return all([
+            verification.license_verification == VERIFICATION_STATUS.APPROVED,
+            verification.operations_verification == VERIFICATION_STATUS.APPROVED,
+            verification.clinical_verification == VERIFICATION_STATUS.APPROVED,
+        ])
+
+    def get_steps(self, obj):
+        verification = obj.dentist_verification
+
+        return [
+            {
+                "phase": DENTIST_VERIFICATION_PHASE.ONE,
+                "label": "License Verification",
+                "status": verification.license_verification,
+            },
+            {
+                "phase": DENTIST_VERIFICATION_PHASE.TWO,
+                "label": "Operations Verification",
+                "status": verification.operations_verification,
+            },
+            {
+                "phase": DENTIST_VERIFICATION_PHASE.THREE,
+                "label": "Clinical Verification",
+                "status": verification.clinical_verification,
+            },
+        ]
 
 
 
@@ -94,6 +174,8 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
                     }
                 )
             )
+            dentist_verification.license_verification = VERIFICATION_STATUS.SUBMIT
+            dentist_verification.save()
             return license_verification
 
 
@@ -213,7 +295,8 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
                 operation_verification=operation_verification,
                 defaults=guarantee_data
             )
-
+            dentist_verification.operations_verification = VERIFICATION_STATUS.SUBMIT
+            dentist_verification.save()
             return operation_verification
 
 
@@ -290,7 +373,76 @@ class ClinicalPathVerificationSubmitSerializer(serializers.Serializer):
                     # protocol_pdf=item.get("protocol_pdf"),
                     # notes=item.get("notes", "")
                 )
+            
+            verification.clinical_verification = VERIFICATION_STATUS.SUBMIT
+            verification.save()
             return clinical_path
 
 # ------------------------Dentist Verification------------------------
 # =====================================================================
+
+
+# =============================Admin or Verification Object Model Serializer=============================
+# Dentist License Verification Phase-------------------------------------------------------------
+class DentistLicenseVerificationSerializer(serializers.ModelSerializer):
+    # dentist = DentistProfileSerializer(read_only=True)
+    # verification = DentistVerificationSerializer(read_only=True)
+        
+    class Meta:
+        model = DentistLicenseVerification
+        fields = "__all__"
+# ------------------------------------------------------------------------------------------------
+
+# Clinical Operation Verification Phase-----------------------------------------------------------
+class SterilizationWalkthroughSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SterilizationWalkthrough
+        fields = "__all__"
+
+class SterilizationVerificationSerializer(serializers.ModelSerializer):
+    walkthrough = SterilizationWalkthroughSerializer(read_only=True)
+
+    class Meta:
+        model = SterilizationVerification
+        fields = "__all__"
+
+class ProcedurePriceSerializer(serializers.ModelSerializer):
+    procedure_name = serializers.CharField(source="procedure.name", read_only=True)
+
+    class Meta:
+        model = ProcedurePrice
+        fields = "__all__"
+
+class NoSurpriseGuaranteeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NoSurpriseGuarantee
+        fields = "__all__"
+
+class ClinicalOperationVerificationSerializer(serializers.ModelSerializer):
+    sterilization_verification = SterilizationVerificationSerializer(read_only=True)
+    no_surprise_guarantee = NoSurpriseGuaranteeSerializer(read_only=True)
+    procedures_feature = ProcedurePriceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ClinicOperationVerification
+        fields = "__all__"
+# ------------------------------------------------------------------------------------------------
+
+# Clinical Depth Verification Phase---------------------------------------------------------------
+class ProcedureMaterialVerificationSerializer(serializers.ModelSerializer):
+    own_procedure = ProcedurePriceSerializer(read_only=True)
+
+    class Meta:
+        model = ProcedureMaterialVerification
+        fields = "__all__"
+
+class ClinicalPathVerificationSerializer(serializers.ModelSerializer):
+    procedure_material_verifications = (ProcedureMaterialVerificationSerializer(many=True, read_only=True))
+    
+    class Meta:
+        model = ClinicalPathVerification
+        fields = "__all__"
+# -------------------------------------------------------------------------------------------------
+# =============================Admin or Verification Object Model Serializer=============================
+
+

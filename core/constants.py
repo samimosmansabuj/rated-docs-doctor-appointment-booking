@@ -35,6 +35,13 @@ class DENTIST_VERIFICATION_PHASE(models.TextChoices):
     THREE = "CLINICAL", "Clinical"
     COMPLETE = "COMPLETE", "Complete"
 
+class VERIFICATION_STATUS(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    SUBMIT = "SUBMIT", "Submit"
+    APPROVED = "APPROVED", "Approved"
+    FAILED = "FAILED", "Failed"
+    REJECT = "REJECT", "Reject"
+
 class WEEK_DAY(models.TextChoices):
     SUN = "Sun", "Sunday"
     MON = "Mon", "Monday"

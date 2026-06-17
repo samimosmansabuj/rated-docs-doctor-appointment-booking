@@ -1,15 +1,13 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from core.permissions import IsAdmin
-from core.constants import DENTIST_VERIFICATION_STATUS
-from dentist.model_serializers import ClinicalOperationVerificationSerializer, DentistLicenseVerificationSerializer, ClinicalPathVerificationSerializer
+from core.constants import DENTIST_VERIFICATION_STATUS, VERIFICATION_STATUS
+from dentist.serializer.serializers import ClinicalOperationVerificationSerializer, DentistLicenseVerificationSerializer, ClinicalPathVerificationSerializer
 from dentist.models import ClinicalPathVerification, DentistLicenseVerification, ClinicOperationVerification
 from core.constants import DENTIST_VERIFICATION_PHASE
 from core.utils.response import custom_response
 from core.utils.viewsets import OwnReadOnlyModelViewSet
 from django.utils import timezone
-
-
 from rest_framework import status
 from rest_framework.decorators import action
 from django.utils import timezone
@@ -38,7 +36,7 @@ class DentistLicenseVerificationViewSet(OwnReadOnlyModelViewSet):
 
         # update parent verification table
         verification = instance.verification
-        verification.license_verification = True
+        verification.license_verification = VERIFICATION_STATUS.APPROVED
         verification.save(update_fields=["license_verification"])
 
         # update dentist phase
@@ -81,7 +79,7 @@ class DentistClinicOperationVerificationViewSet(OwnReadOnlyModelViewSet):
 
         # update parent verification table
         verification = instance.verification
-        verification.operations_verification = True
+        verification.operations_verification = VERIFICATION_STATUS.APPROVED
         verification.save(update_fields=["operations_verification"])
 
         # update dentist phase
@@ -124,7 +122,7 @@ class DentistClinicalDepthVerificationViewSet(OwnReadOnlyModelViewSet):
 
         # update parent verification table
         verification = instance.verification
-        verification.clinical_verification = True
+        verification.clinical_verification = VERIFICATION_STATUS.APPROVED
         verification.save(update_fields=["clinical_verification"])
 
         # update dentist phase
@@ -138,6 +136,8 @@ class DentistClinicalDepthVerificationViewSet(OwnReadOnlyModelViewSet):
             data=self.get_serializer(instance).data,
             status=status.HTTP_200_OK
         )
+
+
 
 
 

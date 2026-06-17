@@ -1,6 +1,8 @@
 from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
-from core.constants import DENTIST_SPECIALTY, DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE
+from core.constants import (
+    DENTIST_SPECIALTY, DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE, VERIFICATION_STATUS
+)
 from rest_framework.exceptions import ValidationError
 from account.models import User
 from core.models import LicenseRegistrationAuthority, Procedure
@@ -86,11 +88,10 @@ class SlotException(TimeStampedModel):
 # ------------------------Dentist Verification------------------------
 class DentistVerification(TimeStampedModel):
     dentist = models.OneToOneField(DentistProfile, on_delete=models.CASCADE, related_name="dentist_verification")
-    license_verification = models.BooleanField(default=False)
-    operations_verification = models.BooleanField(default=False)
-    clinical_verification = models.BooleanField(default=False)
-
-    face_match_score = models.FloatField(null=True)
+    license_verification = models.CharField(choices=VERIFICATION_STATUS.choices, default=VERIFICATION_STATUS.PENDING)
+    operations_verification = models.CharField(choices=VERIFICATION_STATUS.choices, default=VERIFICATION_STATUS.PENDING)
+    clinical_verification = models.CharField(choices=VERIFICATION_STATUS.choices, default=VERIFICATION_STATUS.PENDING)
+    face_match_score = models.FloatField(null=True, blank=True)
 
 # License Verification Phase-----
 class DentistLicenseVerification(TimeStampedModel):

@@ -1,68 +1,40 @@
 from django.shortcuts import render
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
-from core.constants import USER_ROLE_CHOICES, DENTIST_VERIFICATION_PHASE
+from core.permissions import IsDentist
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
-from dentist.serializers import DentistVerificationPhaseUpdateSerializer
+from dentist.serializer.serializers import (
+    DentistVerificationPhaseUpdateSerializer, DentistVerificationStatusSerializer
+)
+from dentist.serializer.model import (
+    DentistProfileDetailSerializer
+)
+from dentist.serializer.public import (
+    PatientDentistDetailSerializer
+)
+from rest_framework.response import Response
+from .models import DentistProfile
+from core.utils.viewsets import OwnReadOnlyModelViewSet
+from rest_framework.views import APIView
+from core.permissions import IsAdmin, IsPatient, IsDentist
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+
 
 class DentistVerificationProgressAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def phase_order(self):
-        return [
-            DENTIST_VERIFICATION_PHASE.ONE,
-            DENTIST_VERIFICATION_PHASE.TWO,
-            DENTIST_VERIFICATION_PHASE.THREE,
-            DENTIST_VERIFICATION_PHASE.COMPLETE,
-        ]
-    
-    def get_step_status(self, current_index):
-        return [
-            {
-                "phase": DENTIST_VERIFICATION_PHASE.ONE,
-                "label": "License",
-                "completed": current_index > 0,
-            },
-            {
-                "phase": DENTIST_VERIFICATION_PHASE.TWO,
-                "label": "Operational",
-                "completed": current_index > 1,
-            },
-            {
-                "phase": DENTIST_VERIFICATION_PHASE.THREE,
-                "label": "Clinical",
-                "completed": current_index > 2,
-            }
-        ]
+    permission_classes = [IsDentist]
 
-    def get_progress_percentage(self, current_index):
-        total_steps = len(self.phase_order()) - 1
-        if current_index >= total_steps:
-            return 100
-        return int((current_index / total_steps) * 100)
-    
     def get(self, request):
-        if request.user.role != USER_ROLE_CHOICES.DENTIST:
-            raise ValidationError("Only dentists are allowed.")
-
-        profile = request.user.dentist_profile
-        phase_order = self.phase_order()
-        current_index = phase_order.index(profile.verification_phase)
-        steps = self.get_step_status(current_index)
-        progress = self.get_progress_percentage(current_index)
-
-        return custom_response(
-            success=True,
-            data={
-                "current_phase": profile.verification_phase,
-                "current_phase_label": profile.get_verification_phase_display(),
-                "progress_percentage": progress,
-                "is_verified": profile.is_verified,
-                "steps": steps,
-            }
+        dentist = request.user.dentist_profile
+        serializer = DentistVerificationStatusSerializer(
+            dentist
         )
+        return Response({
+            "success": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
 class DentistVerificationPhaseUpdateAPIView(OwnAPIView):
     permission_classes = [IsAuthenticated]
@@ -83,3 +55,56 @@ class DentistVerificationPhaseUpdateAPIView(OwnAPIView):
 
 
 
+
+class DentistQuerysetMixin:
+    def get_queryset(self):
+        return DentistProfile.objects.select_related(
+            "user", "clinic", "dentist_verification",
+            "dentist_verification__dentist_license_verification",
+            "dentist_verification__operation_verification",
+            "dentist_verification__operation_verification__sterilization_verification",
+            "dentist_verification__operation_verification__no_surprise_guarantee",
+            "dentist_verification__clinical_path_verification",
+        ).prefetch_related(
+            "dentist_address", "weekly_availability", "slot_exceptions",
+            "dentist_verification__operation_verification__procedures_feature__procedure",
+            "dentist_verification__clinical_path_verification__procedure_material_verifications__own_procedure__procedure",
+        )
+
+class AdminDentistViewSet(DentistQuerysetMixin,OwnReadOnlyModelViewSet):
+    permission_classes = [IsAdmin]
+    serializer_class = DentistProfileDetailSerializer
+
+class PatientDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
+    permission_classes = [IsPatient]
+    serializer_class = PatientDentistDetailSerializer
+    
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ["full_name", "specialty", "clinic__name", "clinic__country", "clinic__city",]
+    ordering_fields = ["rating_avg", "total_reviews", "experience_years", "rdv_score",]
+    filterset_fields = ["specialty",]
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            is_verified=True
+        )
+
+class DentistProfileViewSet(DentistQuerysetMixin, APIView):
+    permission_classes = [IsDentist]
+    serializer_class = DentistProfileDetailSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().get(
+            id=self.request.user.dentist_profile.id
+        )
+    
+    def get(self, request, *args, **kwargs):
+        my_profile = self.get_queryset()
+        serializer = self.serializer_class(my_profile)
+        return Response(
+            {
+                "success": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK
+        )
+    
