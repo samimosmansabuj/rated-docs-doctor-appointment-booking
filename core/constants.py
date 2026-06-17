@@ -165,6 +165,7 @@ class APPOINTMENT_STATUS(models.TextChoices):
     IN_PROGRESS = "IN_PROGRESS", "In Progress"
     FINAL_ESTIMATE_SUBMIT = "final_estimate_submit", "Final Estimate Submit"
     PAYMENT_RELEASE_PENDING = "PAYMENT_RELEASE_PENDING", "Payment Release Pending"
+    PAYMENT_RELEASE = "PAYMENT_RELEASE", "Payment Release"
     COMPLETED = "COMPLETED", "Completed"
     REJECTED = "REJECTED", "Rejected"
     CANCELLED = "CANCELLED", "Cancelled"

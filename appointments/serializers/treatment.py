@@ -89,10 +89,10 @@ class AppointmentRefundReadSerializer(serializers.ModelSerializer):
 class AppointmentDetailSerializer(serializers.ModelSerializer):
     # consultation = ConsultationDetailsSerializer(read_only=True)
     initial_treatment_plan = (TreatmentPlanReadSerializer(read_only=True))
-    final_treatment_plan = (TreatmentPlanReadSerializer(read_only=True))
     decision = AppointmentDecisionReadSerializer(read_only=True)
     escrow_payment = (EscrowPaymentReadSerializer(read_only=True))
     arrival_verification = (ArrivalVerificationReadSerializer(read_only=True))
+    final_treatment_plan = (TreatmentPlanReadSerializer(read_only=True))
     final_decision = (FinalTreatmentDecisionReadSerializer(read_only=True))
     release_code = (PaymentReleaseCodeReadSerializer(read_only=True))
     completion = (TreatmentCompletionReadSerializer(read_only=True))

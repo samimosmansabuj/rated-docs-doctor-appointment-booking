@@ -29,7 +29,6 @@ class TreatmentPlanProcedure(TimeStampedModel, SoftDeleteModel):
 class TreatmentPlanFile(TimeStampedModel, SoftDeleteModel):
     treatment_plan = models.ForeignKey(TreatmentPlan, on_delete=models.CASCADE, related_name="files")
     file = models.FileField(upload_to="treatment-plan/files/")
-    title = models.CharField(max_length=255)
 
 # Appointment Booked and Details Models--------
 class Appointment(TimeStampedModel):
@@ -107,7 +106,6 @@ class TreatmentCompletion(TimeStampedModel):
 class TreatmentCompletionFile(TimeStampedModel):
     completion = models.ForeignKey(TreatmentCompletion, on_delete=models.CASCADE, related_name="files")
     file = models.FileField(upload_to="treatment/completion/")
-    title = models.CharField(max_length=255)
 
 class TreatmentResultPhoto(TimeStampedModel):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="result_photos")
@@ -133,7 +131,6 @@ class AppointmentRefund(TimeStampedModel):
     
     refund_type = models.CharField(max_length=20, choices=REFUND_TYPE.choices)
     reason = models.CharField(max_length=100, choices=REFUND_REASON.choices)
-    patient_note = models.TextField(blank=True)
     
     initial_budget = models.DecimalField(max_digits=12, decimal_places=2)
     final_budget = models.DecimalField(max_digits=12, decimal_places=2)

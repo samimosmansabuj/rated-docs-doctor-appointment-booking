@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from core.utils.viewsets import OwnReadOnlyModelViewSet
 from .consultant_models import Consultation, VideoConsultationSession
-from core.constants import CONSULTATION_STATUS, VIDEO_SESSION_STATUS, APPOINTMENT_STATUS, PAYMENT_STATUS
+from core.constants import CONSULTATION_STATUS, VIDEO_SESSION_STATUS, APPOINTMENT_STATUS, PAYMENT_STATUS, TREATMENT_RESULT_PHOTO_TYPE
 from core.permissions import IsPatient, IsAdmin, IsDentist
 from rest_framework.decorators import action
 from django.db import transaction
@@ -12,7 +12,9 @@ from .models import Appointment, EscrowPayment
 
 from .serializers.serializers import (
     CreateRescheduleRequestSerializer,
-    InitialTreatmentPlanCreateSerializer, AppointmentDecisionSerializer, ArrivalVerificationCreateSerializer, ArrivalCodeVerifySerializer
+    
+    InitialTreatmentPlanCreateSerializer, AppointmentDecisionSerializer, ArrivalVerificationCreateSerializer, ArrivalCodeVerifySerializer,
+    FinalTreatmentPlanCreateSerializer, FinalTreatmentDecisionSerializer, TreatmentResultPhotoSerializer, TreatmentReviewSerializer, PaymentReleaseSerializer, TreatmentCompletionSerializer
 )
 from .serializers.consultant import ConsultationDetailsSerializer
 from .serializers.treatment import AppointmentDetailSerializer
@@ -234,8 +236,90 @@ class PatientAppointmentViewSet(OwnReadOnlyModelViewSet):
             {
                 "success": True,
                 "message": "Patient Travel Mark Complete."
-            }
+            }, status=status.HTTP_200_OK
         )
+
+    @action(detail=True, methods=["post"], url_path="final-decision")
+    def final_decision(self, request, pk=None):
+        with transaction.atomic():
+            data = request.data.copy()
+            data["appointment_id"] = pk
+            serializer = FinalTreatmentDecisionSerializer(
+                data=data,
+                context={"request": request}
+            )
+            serializer.is_valid(raise_exception=True)
+            decision = serializer.save()
+            return Response(
+                {
+                    "success": True,
+                    "message": f"Final treatment decision {decision}."
+                }, status=status.HTTP_200_OK
+            )
+
+    @action(detail=True, methods=["post"], url_path="result-photo")
+    def result_photo(self, request, pk=None):
+        with transaction.atomic():
+            data = request.data.copy()
+            data["appointment_id"] = pk
+            data["image_type"] = TREATMENT_RESULT_PHOTO_TYPE.AFTER
+
+            serializer = TreatmentResultPhotoSerializer(
+                data=data,
+                context={"request": request}
+            )
+
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Result photo uploaded."
+                }, status=status.HTTP_200_OK
+            )
+
+    @action(detail=True, methods=["post"], url_path="review")
+    def review(self, request, pk=None):
+        with transaction.atomic():
+            data = request.data.copy()
+            data["appointment_id"] = pk
+
+            serializer = TreatmentReviewSerializer(
+                data=data,
+                context={"request": request}
+            )
+
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Review submitted."
+                }, status=status.HTTP_200_OK
+            )
+    
+    @review.mapping.patch
+    def review_update(self, request, pk=None):
+        with transaction.atomic():
+            appointment = self.get_object()
+            if hasattr(appointment, "review"):
+                review = appointment.review
+                serializer = TreatmentReviewSerializer(
+                    review,
+                    data=request.data,
+                    partial=True
+                )
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Review updated."
+                    }, status=status.HTTP_200_OK
+                )
 
 class DentistAppointmentViewSet(OwnReadOnlyModelViewSet):
     serializer_class = AppointmentDetailSerializer
@@ -271,12 +355,12 @@ class DentistAppointmentViewSet(OwnReadOnlyModelViewSet):
                 }
             )
 
-    @action(detail=True, methods=["post"], url_path="create-final-estimate")
-    def create_final_estimate(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="final-treatment-plan")
+    def final_treatment_plan(self, request, pk=None):
         with transaction.atomic():
             data = request.data.copy()
-            data["consultation_id"] = pk
-            serializer = InitialTreatmentPlanCreateSerializer(data=data, context={"request": request})
+            data["appointment_id"] = pk
+            serializer = FinalTreatmentPlanCreateSerializer(data=data, context={"request": request})
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(
@@ -284,6 +368,51 @@ class DentistAppointmentViewSet(OwnReadOnlyModelViewSet):
                     "success": True,
                     "message": "Initial Treatment Created"
                 }, status=status.HTTP_201_CREATED
+            )
+
+    @action(detail=True, methods=["post"], url_path="release-payment")
+    def release_payment(self, request, pk=None):
+        with transaction.atomic():
+            data = request.data.copy()
+            data["appointment_id"] = pk
+
+            serializer = PaymentReleaseSerializer(
+                data=data,
+                context={"request": request}
+            )
+
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Payment released successfully."
+                }
+            )
+
+    @action(detail=True, methods=["post"], url_path="complete-treatment")
+    def complete_treatment(self, request, pk=None):
+        with transaction.atomic():
+            print(request.data)
+            print(request.FILES)
+
+            data = request.data.copy()
+            data["appointment_id"] = pk
+
+            serializer = TreatmentCompletionSerializer(
+                data=data,
+                context={"request": request}
+            )
+
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Treatment completed successfully."
+                }
             )
 
 class AdminAppointmentViewSet(OwnReadOnlyModelViewSet):

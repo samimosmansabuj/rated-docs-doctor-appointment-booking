@@ -5,7 +5,7 @@ from appointments.consultant_models import (
     Consultation, ConsultationDentalHistory, ConsultationDentalPhoto, ConsultationXRay, ConsultationSchedule, VideoConsultationSession, ConsultationRescheduleRequest, RESCHEDULE_REQUEST_STATUS
 )
 from appointments.models import (
-    TreatmentPlan, TreatmentPlanProcedure, Appointment, AppointmentDecision, EscrowPayment, ArrivalVerification
+    TreatmentPlan, TreatmentPlanProcedure, Appointment, AppointmentDecision, ArrivalVerification, FinalTreatmentDecision, PaymentReleaseCode, AppointmentRefund, TreatmentCompletion, TreatmentCompletionFile, TreatmentResultPhoto, TreatmentReview, TreatmentPlanFile
 )
 from core.constants import *
 from core.models import Procedure
@@ -13,6 +13,7 @@ from dentist.models import DentistProfile
 from django.db import transaction
 from django.utils import timezone
 import random, string
+import uuid
 
 # Consultation All Serializers------------------------------------------------------------------------
 class ConsultationPatientInfoSerializer(serializers.Serializer):
@@ -348,7 +349,6 @@ class TreatmentPlanProcedureCreateSerializer(serializers.Serializer):
         return attrs
 
 class TreatmentPlanFileSerializer(serializers.Serializer):
-    title = serializers.CharField()
     file = serializers.FileField()
 
 class InitialTreatmentPlanCreateSerializer(serializers.Serializer):
@@ -520,24 +520,13 @@ class ArrivalCodeVerifySerializer(serializers.Serializer):
 class FinalTreatmentPlanCreateSerializer(serializers.Serializer):
     appointment_id = serializers.IntegerField(write_only=True)
     procedures = TreatmentPlanProcedureCreateSerializer(many=True)
-
-    notes = serializers.CharField(
-        required=False,
-        allow_blank=True
-    )
-
-    other_information = serializers.CharField(
-        required=False,
-        allow_blank=True
-    )
-
+    files = TreatmentPlanFileSerializer(write_only=True, required=False)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    other_information = serializers.CharField(required=False, allow_blank=True)
+    
     def create(self, validated_data):
         dentist = self.context["request"].user.dentist_profile
-
-        appointment = Appointment.objects.get(
-            id=validated_data["appointment_id"],
-            dentist=dentist
-        )
+        appointment = Appointment.objects.get(id=validated_data["appointment_id"], dentist=dentist)
 
         if appointment.status != APPOINTMENT_STATUS.IN_PROGRESS:
             raise serializers.ValidationError(
@@ -545,19 +534,32 @@ class FinalTreatmentPlanCreateSerializer(serializers.Serializer):
             )
 
         with transaction.atomic():
+            if TreatmentPlan.objects.filter(consultation=appointment.consultation, version=TREATMENT_PLAN_STAGE.FINAL, created_by=dentist).exists():
+                raise serializers.ValidationError(
+                    "Final estimate already created."
+                )
+            
             treatment_plan = TreatmentPlan.objects.create(
                 consultation=appointment.consultation,
                 created_by=dentist,
                 version=TREATMENT_PLAN_STAGE.FINAL,
-                total_cost=validated_data["total_cost"],
                 notes=validated_data.get("notes", ""),
                 other_information=validated_data.get(
                     "other_information",
                     ""
                 )
             )
-
+            
+            file = validated_data.get("files")
+            if file:
+                TreatmentPlanFile.objects.create(
+                    treatment_plan=treatment_plan,
+                    file=file
+                )
+            
+            total_cost = 0
             for item in validated_data["procedures"]:
+                total_cost += item["estimated_cost"]
                 TreatmentPlanProcedure.objects.create(
                     treatment_plan=treatment_plan,
                     procedure=item.get("procedure"),
@@ -566,11 +568,270 @@ class FinalTreatmentPlanCreateSerializer(serializers.Serializer):
                     note=item.get("note", "")
                 )
 
+            treatment_plan.total_cost = total_cost
+            treatment_plan.save(update_fields=["total_cost"])
+            
             appointment.final_treatment_plan = treatment_plan
-            appointment.status = APPOINTMENT_STATUS.FINAL_ESTIMATE_SUBMITTED
-            appointment.save()
-
+            appointment.status = APPOINTMENT_STATUS.FINAL_ESTIMATE_SUBMIT
+            appointment.save(update_fields=["final_treatment_plan", "status"])
         return treatment_plan
+
+class FinalTreatmentDecisionSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    decision = serializers.ChoiceField(choices=FINAL_TREATMENT_DECISION_STATUS.choices)
+    rejection_reason = serializers.CharField( required=False, allow_blank=True)
+    
+    def set_decision_approved(self, appointment: Appointment) -> Appointment:
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        PaymentReleaseCode.objects.create(
+            appointment=appointment,
+            code=code
+        )
+        appointment.status = APPOINTMENT_STATUS.PAYMENT_RELEASE_PENDING
+        appointment.save(update_fields=["status"])
+        return appointment
+
+    def set_decision_reject(self, appointment: Appointment, patient, validated_data) -> Appointment:
+        initial_budget = appointment.initial_treatment_plan.total_cost
+        final_budget = appointment.final_treatment_plan.total_cost
+        difference_percentage = ((final_budget - initial_budget)/ initial_budget) * 100
+        
+        escrow = appointment.escrow_payment
+        if difference_percentage <= 15:
+            refund_amount = escrow.amount - ((escrow.amount * 10) / 100)
+            refund_type = REFUND_TYPE.PARTIAL
+        else:
+            refund_amount = escrow.amount
+            refund_type = REFUND_TYPE.FULL
+        
+        refund = AppointmentRefund.objects.create(
+            appointment=appointment,
+            escrow_payment=escrow,
+            refund_amount=refund_amount,
+            refund_type=refund_type,
+            reason=validated_data.get("rejection_reason", ""),
+            initial_budget=initial_budget,
+            final_budget=final_budget,
+            percentage_difference=difference_percentage,
+        )
+        appointment.status = APPOINTMENT_STATUS.REJECTED
+        appointment.save(update_fields=["status"])
+        return appointment
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            decision_status = validated_data["decision"]
+            if decision_status not in [FINAL_TREATMENT_DECISION_STATUS.APPROVED, FINAL_TREATMENT_DECISION_STATUS.REJECTED]:
+                raise serializers.ValidationError(
+                    "Invalid Decision."
+                )
+            
+            patient = self.context["request"].user.patient_profile
+            appointment = Appointment.objects.select_related(
+                "initial_treatment_plan",
+                "final_treatment_plan"
+            ).get(id=validated_data["appointment_id"], patient=patient)
+
+            initial_cost = appointment.initial_treatment_plan.total_cost
+            final_cost = appointment.final_treatment_plan.total_cost
+            increase_percent = ((final_cost - initial_cost) / initial_cost) * 100
+
+            if FinalTreatmentDecision.objects.filter(appointment=appointment).exists():
+                raise serializers.ValidationError(
+                    "Final estimate decision already submitted."
+                )
+            
+            decision = FinalTreatmentDecision.objects.create(
+                appointment=appointment,
+                decision=decision_status,
+                rejection_reason=validated_data.get("rejection_reason", ""),
+                extra_percentage=max(increase_percent, 0)
+            )
+
+            if decision.decision == FINAL_TREATMENT_DECISION_STATUS.APPROVED:
+                self.set_decision_approved(appointment)
+            elif decision.decision == FINAL_TREATMENT_DECISION_STATUS.REJECTED:
+                self.set_decision_reject(appointment, patient, validated_data)
+            return decision_status
+
+# class AdditionalPaymentSerializer(serializers.Serializer):
+#     appointment_id = serializers.IntegerField()
+
+#     def create(self, validated_data):
+#         appointment = Appointment.objects.select_related(
+#             "initial_treatment_plan",
+#             "final_treatment_plan"
+#         ).get(
+#             id=validated_data["appointment_id"]
+#         )
+
+#         initial_cost = (
+#             appointment.initial_treatment_plan.total_cost
+#         )
+
+#         final_cost = (
+#             appointment.final_treatment_plan.total_cost
+#         )
+
+#         additional_amount = final_cost - initial_cost
+
+#         if additional_amount <= 0:
+#             raise serializers.ValidationError(
+#                 "No additional payment required."
+#             )
+
+#         payment = appointment.escrow_payment
+
+#         payment.amount += additional_amount
+#         payment.status = PAYMENT_STATUS.COMPLETED
+#         payment.paid_at = timezone.now()
+#         payment.save()
+
+#         code, _ = PaymentReleaseCode.objects.get_or_create(
+#             appointment=appointment,
+#             defaults={
+#                 "code": uuid.uuid4().hex[:8].upper()
+#             }
+#         )
+
+#         return code
+
+class PaymentReleaseSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    code = serializers.CharField()
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            dentist = self.context["request"].user.dentist_profile
+            appointment = Appointment.objects.get(id=validated_data["appointment_id"], dentist=dentist)
+            release_code = appointment.release_code
+            
+            if appointment.status == APPOINTMENT_STATUS.PAYMENT_RELEASE:
+                raise serializers.ValidationError(
+                    "Payment already release."
+                )
+            elif appointment.status != APPOINTMENT_STATUS.PAYMENT_RELEASE_PENDING:
+                raise serializers.ValidationError(
+                    "Can't perform payment release."
+                )
+            elif release_code.code != validated_data["code"]:
+                raise serializers.ValidationError(
+                    "Invalid release code."
+                )
+
+            release_code.verified = True
+            release_code.verified_at = timezone.now()
+            release_code.save(update_fields=["verified", "verified_at"])
+
+            appointment.status = APPOINTMENT_STATUS.PAYMENT_RELEASE
+            appointment.save(
+                update_fields=["status"]
+            )
+            
+            escrow_payment = appointment.escrow_payment
+            escrow_payment.status = PAYMENT_STATUS.RELEASED
+            escrow_payment.save(update_fields=["status"])
+            return release_code
+
+class TreatmentCompletionSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    files = serializers.FileField(required=False)
+
+    def file_uploaded(self, files, completion):
+        if files:
+            if isinstance(files, list):
+                for item in files:
+                    TreatmentCompletionFile.objects.create(
+                        completion=completion,
+                        title=item["title"],
+                        file=item["file"]
+                    )
+            else:
+                TreatmentCompletionFile.objects.create(
+                    completion=completion,
+                    file=files
+                )
+    
+    def create(self, validated_data):
+        dentist = self.context["request"].user.dentist_profile
+        appointment = Appointment.objects.get(id=validated_data["appointment_id"], dentist=dentist)
+        
+        if appointment.status == APPOINTMENT_STATUS.COMPLETED and hasattr(appointment, "completion"):
+            raise serializers.ValidationError(
+                "Complete file already submitted."
+            )
+        
+        with transaction.atomic():
+            completion, created = TreatmentCompletion.objects.get_or_create(
+                appointment=appointment,
+                defaults={
+                    "notes": validated_data.get("notes", ""),
+                    "completed_at": timezone.now(),
+                }
+            )
+            uploaded_file = validated_data.get("files")
+            self.file_uploaded(uploaded_file, completion)
+            
+            appointment.status = APPOINTMENT_STATUS.COMPLETED
+            appointment.save(
+                update_fields=["status"]
+            )
+            return completion
+
+class TreatmentResultPhotoSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    image = serializers.ImageField()
+    image_type = serializers.ChoiceField(choices=TREATMENT_RESULT_PHOTO_TYPE.choices)
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            image_type = validated_data["image_type"]
+            appointment = Appointment.objects.get(id=validated_data["appointment_id"])
+            
+            if TreatmentResultPhoto.objects.filter(appointment=appointment, image_type=image_type).exists():
+                raise serializers.ValidationError(
+                    f"{image_type} result photo already submitted."
+                )
+            
+            return TreatmentResultPhoto.objects.create(
+                appointment=appointment,
+                image=validated_data["image"],
+                image_type=image_type
+            )
+
+class TreatmentReviewSerializer(serializers.Serializer):
+    appointment_id = serializers.IntegerField(write_only=True)
+    communication = serializers.IntegerField(min_value=1, max_value=5)
+    value_for_money = serializers.IntegerField(min_value=1, max_value=5)
+    follow_through = serializers.IntegerField(min_value=1, max_value=5)
+    review_text = serializers.CharField(required=False, allow_blank=True)
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    def create(self, validated_data):
+        patient = self.context["request"].user.patient_profile
+        appointment = Appointment.objects.get(id=validated_data["appointment_id"], patient=patient)
+        
+        if hasattr(appointment, "review"):
+            raise serializers.ValidationError(
+                "Review already submitted."
+            )
+        
+        return TreatmentReview.objects.create(
+            appointment=appointment,
+            patient=patient,
+            dentist=appointment.dentist,
+            communication=validated_data["communication"],
+            value_for_money=validated_data["value_for_money"],
+            follow_through=validated_data["follow_through"],
+            review_text=validated_data.get("review_text", "")
+        )
+
 # -----------------------------------------------------------------------------------------------------
 
 
