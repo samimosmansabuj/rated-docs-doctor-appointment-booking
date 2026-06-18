@@ -43,7 +43,7 @@ class PatientDentistDetailSerializer(serializers.ModelSerializer):
             "rating_avg","total_reviews",
             "rdv_score","response_time_avg",
             "is_verified",
-            "clinic","dentist_address",
+            "user", "clinic","dentist_address",
             "procedures",
         ]
 

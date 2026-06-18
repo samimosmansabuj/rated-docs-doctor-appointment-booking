@@ -22,19 +22,35 @@ from core.permissions import IsAdmin, IsPatient, IsDentist
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
+from rest_framework.exceptions import NotFound
+
 
 class DentistVerificationProgressAPIView(APIView):
     permission_classes = [IsDentist]
+    
+    def get_dentist(self):
+        if hasattr(self.request.user, "dentist_profile"):
+            return self.request.user.dentist_profile
+        else:
+            raise NotFound("You have no dentist profile.")
 
     def get(self, request):
-        dentist = request.user.dentist_profile
-        serializer = DentistVerificationStatusSerializer(
-            dentist
-        )
-        return Response({
-            "success": True,
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
+        try:
+            dentist = self.get_dentist()
+            serializer = DentistVerificationStatusSerializer(
+                dentist
+            )
+            return Response({
+                "success": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except NotFound as e:
+            return Response(
+                {
+                    "success": False,
+                    "details": str(e)
+                }, status=status.HTTP_404_NOT_FOUND
+            )
 
 class DentistVerificationPhaseUpdateAPIView(OwnAPIView):
     permission_classes = [IsAuthenticated]
@@ -71,12 +87,12 @@ class DentistQuerysetMixin:
             "dentist_verification__clinical_path_verification__procedure_material_verifications__own_procedure__procedure",
         )
 
-class AdminDentistViewSet(DentistQuerysetMixin,OwnReadOnlyModelViewSet):
+class AdminDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
     permission_classes = [IsAdmin]
     serializer_class = DentistProfileDetailSerializer
 
 class PatientDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
-    permission_classes = [IsPatient]
+    # permission_classes = [IsPatient]
     serializer_class = PatientDentistDetailSerializer
     
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -94,17 +110,28 @@ class DentistProfileViewSet(DentistQuerysetMixin, APIView):
     serializer_class = DentistProfileDetailSerializer
 
     def get_queryset(self):
-        return super().get_queryset().get(
-            id=self.request.user.dentist_profile.id
-        )
+        if hasattr(self.request.user, "dentist_profile"):
+            return super().get_queryset().get(
+                id=self.request.user.dentist_profile.id
+            )
+        else:
+            raise NotFound("You have no dentist profile.")
     
     def get(self, request, *args, **kwargs):
-        my_profile = self.get_queryset()
-        serializer = self.serializer_class(my_profile)
-        return Response(
-            {
-                "success": True,
-                "data": serializer.data
-            }, status=status.HTTP_200_OK
-        )
+        try:
+            my_profile = self.get_queryset()
+            serializer = self.serializer_class(my_profile)
+            return Response(
+                {
+                    "success": True,
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK
+            )
+        except NotFound as e:
+            return Response(
+                {
+                    "success": False,
+                    "details": str(e)
+                }, status=status.HTTP_404_NOT_FOUND
+            )
     

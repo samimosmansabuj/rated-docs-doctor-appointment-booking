@@ -11,6 +11,9 @@ from .serializer.serializers import (
     ClinicalOperationVerificationSerializer, ClinicalPathVerificationSerializer, DentistLicenseVerificationSerializer
 )
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import NotFound
+from rest_framework import status
+from rest_framework.response import Response
 
 class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
     permission_classes = [IsDentist]
@@ -24,22 +27,36 @@ class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
             detail="License verified submitted.",
         )
     
+    def get_dentist(self):
+        if hasattr(self.request.user, "dentist_profile"):
+            return self.request.user.dentist_profile
+        else:
+            raise NotFound("You have no dentist profile.")
+    
     def get(self, request, *args, **kwargs):
-        profile = request.user.dentist_profile
         try:
+            dentist = self.get_dentist()
             instance = DentistLicenseVerification.objects.select_related(
                 "dentist",
                 "verification",
                 "registration_authority"
-            ).get(dentist=profile)
+            ).get(dentist=dentist)
         except DentistLicenseVerification.DoesNotExist:
             return custom_response(
-                success=True,
+                success=False,
                 message="No license verification found.",
                 data={
                     "submitted": False,
                     "status": None
-                }
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except NotFound as e:
+            return Response(
+                {
+                    "success": False,
+                    "details": str(e)
+                }, status=status.HTTP_404_NOT_FOUND
             )
 
         return custom_response(
@@ -67,9 +84,16 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
             detail="Phase 2 submitted."
         )
 
+    def get_dentist(self):
+        if hasattr(self.request.user, "dentist_profile"):
+            return self.request.user.dentist_profile
+        else:
+            raise NotFound("You have no dentist profile.")
+    
+    
     def get(self, request, *args, **kwargs):
-        profile = request.user.dentist_profile
         try:
+            dentist = self.get_dentist()
             instance = ClinicOperationVerification.objects.select_related(
                 "dentist",
                 "verification",
@@ -80,7 +104,7 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
             ).prefetch_related(
                 "procedures_feature",
                 "procedures_feature__procedure",
-            ).get(dentist=profile)
+            ).get(dentist=dentist)
         except ClinicOperationVerification.DoesNotExist:
             return custom_response(
                 success=True,
@@ -89,6 +113,13 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
                     "submitted": False,
                     "status": None
                 }
+            )
+        except NotFound as e:
+            return Response(
+                {
+                    "success": False,
+                    "details": str(e)
+                }, status=status.HTTP_404_NOT_FOUND
             )
 
         return custom_response(
@@ -116,12 +147,18 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
             detail="Phase 3 submitted."
         )
 
+    def get_dentist(self):
+        if hasattr(self.request.user, "dentist_profile"):
+            return self.request.user.dentist_profile
+        else:
+            raise NotFound("You have no dentist profile.")
+    
     def get(self, request, *args, **kwargs):
-        profile = request.user.dentist_profile
         try:
+            dentist = self.get_dentist()
             instance = ClinicalPathVerification.objects.select_related(
                 "dentist", "verification", "clinic", "verified_by"
-            ).get(dentist=profile)
+            ).get(dentist=dentist)
         except ClinicalPathVerification.DoesNotExist:
             return custom_response(
                 success=True,
@@ -130,6 +167,13 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
                     "submitted": False,
                     "status": None
                 }
+            )
+        except NotFound as e:
+            return Response(
+                {
+                    "success": False,
+                    "details": str(e)
+                }, status=status.HTTP_404_NOT_FOUND
             )
 
         return custom_response(

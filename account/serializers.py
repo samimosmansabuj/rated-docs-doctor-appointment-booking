@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 from django.contrib.auth import get_user_model
 from .models import PatientProfile, OTP
-from dentist.models import DentistProfile, DentistAddress
+from dentist.models import DentistProfile, DentistAddress, DentistVerification
 from core.constants import DENTIST_SPECIALTY, OTP_PURPOSE, USER_ROLE_CHOICES
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -269,5 +269,8 @@ class DentistProfessionalSerializer(serializers.Serializer):
                     "city": validated_data.get("city"),
                     "country": validated_data.get("country")
                 }
+            )
+            DentistVerification.objects.get_or_create(
+                dentist=dentist_profile
             )
             return dentist_profile
