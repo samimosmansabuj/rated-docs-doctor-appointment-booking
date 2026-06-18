@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from core.utils.viewsets import OwnReadOnlyModelViewSet
 from .consultant_models import Consultation, VideoConsultationSession
-from core.constants import CONSULTATION_STATUS, VIDEO_SESSION_STATUS, APPOINTMENT_STATUS, PAYMENT_STATUS, TREATMENT_RESULT_PHOTO_TYPE
+from core.constants import CONSULTATION_STATUS, VIDEO_SESSION_STATUS, APPOINTMENT_STATUS, ESCROW_PAYMENT_STATUS, PAYMENT_STATUS, TREATMENT_RESULT_PHOTO_TYPE
 from core.permissions import IsPatient, IsAdmin, IsDentist
 from rest_framework.decorators import action
 from django.db import transaction
@@ -76,7 +76,7 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
                 defaults={
                     "amount": appointment.initial_treatment_plan.total_cost,
                     "currency": "USD",
-                    "status": PAYMENT_STATUS.PENDING
+                    "status": ESCROW_PAYMENT_STATUS.PENDING
                 }
             )
         payment_callback_url = self.payment_callback_url(payment)

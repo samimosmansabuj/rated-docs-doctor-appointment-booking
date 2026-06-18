@@ -2,7 +2,7 @@ from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
 from account.models import PatientProfile
 from dentist.models import DentistProfile
-from core.constants import TREATMENT_PLAN_STAGE, APPOINTMENT_DECISION, FINAL_TREATMENT_DECISION_STATUS, TREATMENT_RESULT_PHOTO_TYPE, APPOINTMENT_STATUS, PAYMENT_STATUS, REFUND_STATUS, REFUND_TYPE, REFUND_REASON
+from core.constants import TREATMENT_PLAN_STAGE, APPOINTMENT_DECISION, FINAL_TREATMENT_DECISION_STATUS, TREATMENT_RESULT_PHOTO_TYPE, APPOINTMENT_STATUS, REFUND_STATUS, REFUND_TYPE, REFUND_REASON, ESCROW_PAYMENT_STATUS, PAYMENT_STATUS
 from .consultant_models import Consultation
 from core.models import Procedure
 import uuid
@@ -52,7 +52,15 @@ class AppointmentDecision(TimeStampedModel):
 
 class EscrowPayment(TimeStampedModel):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="escrow_payment")
+    patient = models.ForeignKey(PatientProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name="escrow_payment")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(max_length=30, choices=ESCROW_PAYMENT_STATUS.choices, default=ESCROW_PAYMENT_STATUS.PENDING)
+
+class Payment(TimeStampedModel):
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="payments")
     patient = models.ForeignKey(PatientProfile, on_delete=models.SET_NULL, blank=True, null=True, related_name="payments")
+    escrow_payment = models.ForeignKey(EscrowPayment, on_delete=models.SET_NULL, blank=True, null=True, related_name="payments")
     
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="USD")
@@ -66,7 +74,7 @@ class EscrowPayment(TimeStampedModel):
     
     provider_transaction_id = models.CharField(max_length=255, blank=True, null=True)
     transaction_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
-
+    
     invoice_url = models.CharField(max_length=255, blank=True, null=True)
     receipt_url = models.CharField(max_length=255, blank=True, null=True)
     failure_reason = models.TextField(blank=True, null=True)
@@ -77,6 +85,7 @@ class EscrowPayment(TimeStampedModel):
         if not self.stripe_subscription_id:
             self.stripe_subscription_id = str(uuid.uuid4())
         super().save(*args, **kwargs)
+    
 
 class ArrivalVerification(TimeStampedModel):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="arrival_verification")

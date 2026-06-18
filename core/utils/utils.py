@@ -5,9 +5,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from appointments.models import EscrowPayment
 from core.constants import (
-    PAYMENT_STATUS,
     APPOINTMENT_STATUS,
     CONSULTATION_STATUS,
+    PAYMENT_STATUS,
+    ESCROW_PAYMENT_STATUS
 )
 
 
@@ -50,7 +51,7 @@ class PaymentCallbackAPIView(APIView):
         consultation = appointment.consultation
 
         # prevent duplicate callback processing
-        if payment.status == PAYMENT_STATUS.IN_ESCROW:
+        if payment.status == ESCROW_PAYMENT_STATUS.IN_ESCROW:
             return Response(
                 {
                     "success": True,
@@ -58,7 +59,7 @@ class PaymentCallbackAPIView(APIView):
                 }
             )
 
-        payment.status = PAYMENT_STATUS.IN_ESCROW
+        payment.status = ESCROW_PAYMENT_STATUS.IN_ESCROW
         payment.paid_at = timezone.now()
         payment.payment_details = payment_details
         # payment.stripe_subscription_id = stripe_token

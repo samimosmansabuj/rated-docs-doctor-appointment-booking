@@ -683,7 +683,7 @@ class FinalTreatmentDecisionSerializer(serializers.Serializer):
 #         payment = appointment.escrow_payment
 
 #         payment.amount += additional_amount
-#         payment.status = PAYMENT_STATUS.COMPLETED
+#         payment.status = ESCROW_PAYMENT_STATUS.COMPLETED
 #         payment.paid_at = timezone.now()
 #         payment.save()
 
@@ -729,7 +729,7 @@ class PaymentReleaseSerializer(serializers.Serializer):
             )
             
             escrow_payment = appointment.escrow_payment
-            escrow_payment.status = PAYMENT_STATUS.RELEASED
+            escrow_payment.status = ESCROW_PAYMENT_STATUS.RELEASED
             escrow_payment.save(update_fields=["status"])
             return release_code
 

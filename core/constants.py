@@ -177,11 +177,19 @@ class APPOINTMENT_STATUS(models.TextChoices):
     REJECTED = "REJECTED", "Rejected"
     CANCELLED = "CANCELLED", "Cancelled"
 
-class PAYMENT_STATUS(models.TextChoices):
+class ESCROW_PAYMENT_STATUS(models.TextChoices):
     PENDING = "PENDING", "Pending"
     IN_ESCROW = "IN_ESCROW", "In Escrow"
     RELEASED = "RELEASED", "Released"
     REFUNDED = "REFUNDED", "Refunded"
+    PARTIAL_REFUND = "PARTIAL_REFUND", "Partial Refund"
+
+class PAYMENT_STATUS(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    INITIAT = "INITIAT", "Initiat"
+    SUCCESS = "SUCCESS", "Success"
+    FAILED = "FAILED", "Failed"
+    REFUND = "REFUND", "Refund"
     PARTIAL_REFUND = "PARTIAL_REFUND", "Partial Refund"
 
 class REFUND_STATUS(models.TextChoices):
