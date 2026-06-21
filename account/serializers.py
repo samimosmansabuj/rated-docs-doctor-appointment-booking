@@ -133,17 +133,20 @@ class LoginSerializer(serializers.Serializer):
         user = authenticate(email=email, password=password)
         if not user:
             raise ValidationError("Invalid credentials")
-        elif user.is_verified is False:
-            raise ValidationError("User Unverified.")
         self.check_role(role, user)
+        if user.role in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST] and user.is_verified is False:
+            raise ValidationError("User Unverified.")
         refresh = RefreshToken.for_user(user)
-        return {
+        
+        response = {
             "user": UserSerializer(user).data,
             "role": user.role,
-            "profile_created": self.get_profile_created(user),
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }
+        if user.role in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST]:
+            response["profile_created"] = self.get_profile_created(user)
+        return response
 
 class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField()

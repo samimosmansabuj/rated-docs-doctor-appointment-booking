@@ -132,17 +132,11 @@ class SterilizationVerification(TimeStampedModel):
     operation_verification = models.OneToOneField(ClinicOperationVerification, on_delete=models.CASCADE, related_name="sterilization_verification")
     has_jci_certificate = models.BooleanField(default=False)
     jci_certificate = models.FileField(upload_to="documents/jci/", blank=True, null=True)
-    certificate_number = models.CharField(max_length=255, blank=True)
+    walkthrough_video = models.FileField(upload_to="documents/sterilization-videos/", blank=True, null=True)
+    certificate_number = models.CharField(max_length=255, blank=True, null=True)
     expiry_date = models.DateField(null=True, blank=True)
     issuing_authority = models.CharField(blank=True, null=True)
     issue_date = models.DateField(blank=True, null=True)
-
-class SterilizationWalkthrough(TimeStampedModel):
-    sterilization = models.OneToOneField(SterilizationVerification, on_delete=models.CASCADE, related_name="walkthrough")
-    walkthrough_video = models.FileField(upload_to="documents/sterilization-videos/", blank=True, null=True)
-    autoclave_brand = models.BooleanField(default=False)
-    sealed_pouch_visible = models.BooleanField(default=False)
-    ultrasonic_cleaner_available = models.BooleanField(default=False)
 
 # Procedure Price
 class ProcedurePrice(TimeStampedModel):

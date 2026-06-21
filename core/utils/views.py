@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import CreateAPIView
 from django.db import transaction
+import json
 
 class OwnAPIView(APIView):
     serializer_class = None
@@ -96,6 +97,15 @@ class BaseCreateAPIView(CreateAPIView):
         )
     
     def create(self, request, *args, **kwargs):
+        print("data: ", request.data)
+        # {'name': 'John', 'age': 25}
+
+        print("body: ", request.body.decode("utf-8"))
+        # b'{"name":"John","age":25}'
+        
+        body = json.loads(request.body)
+        print(body)
+        print("body: ", request.POST)
         try:
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)
@@ -113,6 +123,6 @@ class BaseCreateAPIView(CreateAPIView):
                     "detail": str(e)
                 }, status=status.HTTP_400_BAD_REQUEST
             )
-        
+    
 
 

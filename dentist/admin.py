@@ -10,7 +10,6 @@ from .models import (
     DentistLicenseVerification,
     ClinicOperationVerification,
     SterilizationVerification,
-    SterilizationWalkthrough,
     ProcedurePrice,
     NoSurpriseGuarantee,
     ClinicalPathVerification,
@@ -30,7 +29,6 @@ admin.site.register(DentistLicenseVerification)
 
 admin.site.register(ClinicOperationVerification)
 admin.site.register(SterilizationVerification)
-admin.site.register(SterilizationWalkthrough)
 
 admin.site.register(ProcedurePrice)
 admin.site.register(NoSurpriseGuarantee)

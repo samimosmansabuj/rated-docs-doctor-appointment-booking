@@ -1,5 +1,5 @@
 from appointments.models import (
-    TreatmentPlan, TreatmentPlanProcedure, Appointment, AppointmentDecision, EscrowPayment, ArrivalVerification, TreatmentPlanFile, TreatmentReview, TreatmentResultPhoto, TreatmentCompletionFile, TreatmentCompletion, FinalTreatmentDecision, PaymentReleaseCode, AppointmentRefund
+    TreatmentPlan, TreatmentPlanProcedure, Appointment, AppointmentDecision, Payment, EscrowPayment, ArrivalVerification, TreatmentPlanFile, TreatmentReview, TreatmentResultPhoto, TreatmentCompletionFile, TreatmentCompletion, FinalTreatmentDecision, PaymentReleaseCode, AppointmentRefund
 )
 from rest_framework import serializers
 from .consultant import ConsultationDetailsSerializer
@@ -31,7 +31,14 @@ class AppointmentDecisionReadSerializer(serializers.ModelSerializer):
         model = AppointmentDecision
         fields = "__all__"
 
+class PaymentDetailsReadSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
 class EscrowPaymentReadSerializer(serializers.ModelSerializer):
+    payments = PaymentDetailsReadSerializer(many=True)
 
     class Meta:
         model = EscrowPayment

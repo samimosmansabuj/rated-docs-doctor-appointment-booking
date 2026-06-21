@@ -15,6 +15,7 @@ from .models import (
     Appointment,
     AppointmentDecision,
     EscrowPayment,
+    Payment,
     ArrivalVerification,
     FinalTreatmentDecision,
     PaymentReleaseCode,
@@ -34,6 +35,7 @@ admin.site.register(Appointment)
 admin.site.register(AppointmentDecision)
 
 admin.site.register(EscrowPayment)
+admin.site.register(Payment)
 admin.site.register(ArrivalVerification)
 
 admin.site.register(FinalTreatmentDecision)

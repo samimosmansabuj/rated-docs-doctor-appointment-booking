@@ -1,6 +1,8 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from dentist.verification_views import DentistLicenseVerificationSubmitAPIView, ClinicalOperationVerificationSubmitAPIView, ClinicalDepthVerificationSubmitAPIView
+from dentist.verification_views import (
+    DentistLicenseVerificationSubmitAPIView, ClinicalOperationVerificationSubmitAPIView, ClinicalDepthVerificationSubmitAPIView, DentistProcedureReadListView
+)
 from dentist.views import (
     DentistVerificationProgressAPIView, DentistVerificationPhaseUpdateAPIView,
     
@@ -29,6 +31,7 @@ urlpatterns = [
     # Verification Step Action---
     path("dentist/verification-step/license/", DentistLicenseVerificationSubmitAPIView.as_view(), name="dentist-license-verification"),
     path("dentist/verification-step/operations/", ClinicalOperationVerificationSubmitAPIView.as_view(), name="dentist-clinical-operation-verification"),
+    path("dentist/verification-step/dentist-procedure-list/", DentistProcedureReadListView.as_view(), name="dentist-procedure-list"),
     path("dentist/verification-step/clinical-depth/", ClinicalDepthVerificationSubmitAPIView.as_view(), name="dentist-clinical-depth-verification"),
     
     # Dentist Own Profile Details----

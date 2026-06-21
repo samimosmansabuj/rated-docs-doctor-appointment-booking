@@ -3,7 +3,7 @@ from rest_framework.serializers import ValidationError
 from django.utils import timezone
 from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS
 from core.models import LicenseRegistrationAuthority, Procedure
-from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, SterilizationWalkthrough
+from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification
 from django.db import transaction
 
 
@@ -178,21 +178,6 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
             dentist_verification.save()
             return license_verification
 
-
-class SterilizationSectionSerializer(serializers.Serializer):
-    has_jci_certificate = serializers.BooleanField()
-    jci_certificate = serializers.FileField(required=False)
-    certificate_number = serializers.CharField(required=False)
-    expiry_date = serializers.DateField(required=False)
-    issuing_authority = serializers.CharField(required=False)
-    issue_date = serializers.DateField(required=False)
-
-    walkthrough_video = serializers.FileField(required=False)
-
-    autoclave_brand = serializers.BooleanField()
-    sealed_pouch_visible = serializers.BooleanField()
-    ultrasonic_cleaner_available = serializers.BooleanField()
-
 class ProcedurePriceItemSerializer(serializers.Serializer):
     procedure = serializers.PrimaryKeyRelatedField(queryset=Procedure.objects.all())
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
@@ -205,26 +190,46 @@ class NoSurpriseGuaranteeSerializer(serializers.Serializer):
     accepted_terms = serializers.BooleanField()
 
 class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
-    sterilization = SterilizationSectionSerializer()
+    jci_certificate = serializers.FileField(required=False)
+    walkthrough_video = serializers.FileField(required=False)
     procedures = ProcedurePriceItemSerializer(many=True)
     guarantee = NoSurpriseGuaranteeSerializer()
+    
+    # def validate(self, attrs):
+    #     jci_certificate = attrs.get("jci_certificate")
+    #     walkthrough_video = attrs.get("walkthrough_video")
+    #     if not jci_certificate and not walkthrough_video:
+    #         raise serializers.ValidationError(
+    #             "Either JCI Certificate or Walkthrough Video is required."
+    #         )
+    #     return attrs
 
+    def check_status_validation(self, operation_verification, created):
+        if not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.SUBMITTED, DENTIST_VERIFICATION_STATUS.UNDER_REVIEW]:
+            raise ValidationError(
+                "Operational verification is already submitted and pending review."
+            )
+        elif not created and operation_verification.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+            raise ValidationError(
+                "Operational verification has already been approved. You cannot update it."
+            )
+        # elif not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.REJECTED, DENTIST_VERIFICATION_STATUS.NEED_MORE_EVIDENCE, DENTIST_VERIFICATION_STATUS.RESUBMIT_REQUIRED]:
+        #     raise ValidationError(
+        #         "Operational verification needs resubmission. Please update the required information and resubmit."
+        #     )
+    
     def create(self, validated_data):
         with transaction.atomic():
             user = self.context["request"].user
             dentist = user.dentist_profile
+            # clinic = dentist.clinic
 
             if dentist.verification_phase != DENTIST_VERIFICATION_PHASE.TWO:
                 raise ValidationError(
                     "Operational verification is not available yet."
                 )
 
-            # clinic = dentist.clinic
-
-            dentist_verification = DentistVerification.objects.get(
-                dentist=dentist
-            )
-
+            dentist_verification = DentistVerification.objects.get(dentist=dentist)
             operation_verification, created = (
                 ClinicOperationVerification.objects.update_or_create(
                     # clinic=clinic,
@@ -235,52 +240,29 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
                     }
                 )
             )
+            self.check_status_validation(operation_verification, created)
             
-            if not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.SUBMITTED, DENTIST_VERIFICATION_STATUS.UNDER_REVIEW]:
-                raise ValidationError(
-                    "Operational verification is already submitted and pending review."
-                )
-            elif not created and operation_verification.status == DENTIST_VERIFICATION_STATUS.APPROVED:
-                raise ValidationError(
-                    "Operational verification has already been approved. You cannot update it."
-                )
-            # elif not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.REJECTED, DENTIST_VERIFICATION_STATUS.NEED_MORE_EVIDENCE, DENTIST_VERIFICATION_STATUS.RESUBMIT_REQUIRED]:
-            #     raise ValidationError(
-            #         "Operational verification needs resubmission. Please update the required information and resubmit."
-            #     )
-
-            sterilization_data = validated_data.pop("sterilization")
-            procedures_data = validated_data.pop("procedures")
-            guarantee_data = validated_data.pop("guarantee")
-
+            # sterilization object----
+            jci_certificate = validated_data.pop("jci_certificate", None)
+            walkthrough_video = validated_data.pop("walkthrough_video", None)
             sterilization, _ = (
                 SterilizationVerification.objects.update_or_create(
                     operation_verification=operation_verification,
                     defaults={
-                        "has_jci_certificate": sterilization_data.get("has_jci_certificate"),
-                        "jci_certificate": sterilization_data.get("jci_certificate"),
-                        "certificate_number": sterilization_data.get("certificate_number"),
-                        "expiry_date": sterilization_data.get("expiry_date"),
-                        "issuing_authority": sterilization_data.get("issuing_authority"),
-                        "issue_date": sterilization_data.get("issue_date"),
+                        "jci_certificate": jci_certificate,
+                        "walkthrough_video": walkthrough_video,
                     }
                 )
             )
-            if sterilization.has_jci_certificate:
-                SterilizationWalkthrough.objects.update_or_create(
-                    sterilization=sterilization,
-                    defaults={
-                        "walkthrough_video": sterilization_data.get("walkthrough_video"),
-                        "autoclave_brand": sterilization_data.get("autoclave_brand"),
-                        "sealed_pouch_visible": sterilization_data.get("sealed_pouch_visible"),
-                        "ultrasonic_cleaner_available": sterilization_data.get("ultrasonic_cleaner_available"),
-                    }
-                )
 
+            procedures_data = validated_data.pop("procedures")
             ProcedurePrice.objects.filter(
                 operation_verification=operation_verification
             ).delete()
 
+            
+            guarantee_data = validated_data.pop("guarantee")
+            
             for item in procedures_data:
                 ProcedurePrice.objects.create(
                     operation_verification=operation_verification,
@@ -295,10 +277,10 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
                 operation_verification=operation_verification,
                 defaults=guarantee_data
             )
+            
             dentist_verification.operations_verification = VERIFICATION_STATUS.SUBMIT
             dentist_verification.save()
             return operation_verification
-
 
 class ProcedureMaterialVerificationItemSerializer(serializers.Serializer):
     own_procedure = serializers.PrimaryKeyRelatedField(queryset=ProcedurePrice.objects.all())
@@ -394,13 +376,7 @@ class DentistLicenseVerificationSerializer(serializers.ModelSerializer):
 # ------------------------------------------------------------------------------------------------
 
 # Clinical Operation Verification Phase-----------------------------------------------------------
-class SterilizationWalkthroughSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SterilizationWalkthrough
-        fields = "__all__"
-
 class SterilizationVerificationSerializer(serializers.ModelSerializer):
-    walkthrough = SterilizationWalkthroughSerializer(read_only=True)
 
     class Meta:
         model = SterilizationVerification

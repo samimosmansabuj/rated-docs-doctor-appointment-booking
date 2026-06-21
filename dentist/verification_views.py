@@ -10,10 +10,13 @@ from .serializer.serializers import (
     # View
     ClinicalOperationVerificationSerializer, ClinicalPathVerificationSerializer, DentistLicenseVerificationSerializer
 )
-from rest_framework.parsers import MultiPartParser, FormParser
+from .serializer.public import PublicProcedureSerializer
 from rest_framework.exceptions import NotFound
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+import json
+from django.db import transaction
 
 class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
     permission_classes = [IsDentist]
@@ -90,7 +93,6 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
         else:
             raise NotFound("You have no dentist profile.")
     
-    
     def get(self, request, *args, **kwargs):
         try:
             dentist = self.get_dentist()
@@ -133,6 +135,25 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
                 "data": ClinicalOperationVerificationSerializer(instance).data
             }
         )
+
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                return self.success_response(serializer)
+        except ValidationError as e:
+            return self.serializer_error_response(
+                serializer=locals().get("serializer"),
+                error=e
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "detail": str(e)
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
 
 class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
     permission_classes = [IsDentist]
@@ -186,5 +207,20 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
                 "verified_at": instance.verified_at,
                 "data": ClinicalPathVerificationSerializer(instance).data
             }
+        )
+
+class DentistProcedureReadListView(APIView):
+    permission_classes = [IsDentist]
+    
+    def get(self, request, *args, **kwargs):
+        dentist_procedure_list = self.request.user.dentist_profile.procedures_feature
+        serializer = PublicProcedureSerializer(dentist_procedure_list, many=True)
+        data = serializer.data
+        return Response(
+            {
+                "success": True,
+                "count": len(data),
+                "procedure_list": data
+            }, status=status.HTTP_200_OK
         )
 
