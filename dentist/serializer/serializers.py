@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.serializers import ValidationError
 from django.utils import timezone
-from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS
+from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS, PROCEDURE_CHOICES
 from core.models import LicenseRegistrationAuthority, Procedure
 from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification
 from django.db import transaction
@@ -179,7 +179,8 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
             return license_verification
 
 class ProcedurePriceItemSerializer(serializers.Serializer):
-    procedure = serializers.PrimaryKeyRelatedField(queryset=Procedure.objects.all())
+    procedure_name = serializers.CharField(required=False)
+    procedure_id = serializers.IntegerField(required=False)
     price = serializers.DecimalField(max_digits=12, decimal_places=2)
     currency = serializers.CharField(default="USD")
     option_notes = serializers.CharField(required=False, allow_blank=True)
@@ -195,14 +196,14 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
     procedures = ProcedurePriceItemSerializer(many=True)
     guarantee = NoSurpriseGuaranteeSerializer()
     
-    # def validate(self, attrs):
-    #     jci_certificate = attrs.get("jci_certificate")
-    #     walkthrough_video = attrs.get("walkthrough_video")
-    #     if not jci_certificate and not walkthrough_video:
-    #         raise serializers.ValidationError(
-    #             "Either JCI Certificate or Walkthrough Video is required."
-    #         )
-    #     return attrs
+    def validate(self, attrs):
+        # jci_certificate = attrs.get("jci_certificate")
+        # walkthrough_video = attrs.get("walkthrough_video")
+        # if not jci_certificate and not walkthrough_video:
+        #     raise serializers.ValidationError(
+        #         "Either JCI Certificate or Walkthrough Video is required."
+        #     )
+        return attrs
 
     def check_status_validation(self, operation_verification, created):
         if not created and operation_verification.status in [DENTIST_VERIFICATION_STATUS.SUBMITTED, DENTIST_VERIFICATION_STATUS.UNDER_REVIEW]:
@@ -256,23 +257,25 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
             )
 
             procedures_data = validated_data.pop("procedures")
-            ProcedurePrice.objects.filter(
-                operation_verification=operation_verification
-            ).delete()
-
-            
-            guarantee_data = validated_data.pop("guarantee")
-            
+            ProcedurePrice.objects.filter(operation_verification=operation_verification).delete()
             for item in procedures_data:
+                procedure_name = item.get("procedure_name")
+                procedure_id = item.get("procedure_id")
+                if not procedure_name and not procedure_id:
+                    raise serializers.ValidationError(
+                        "Either Procedure Name or Procedure ID is required."
+                    )
+                procedure = self.get_procedure(procedure_id=procedure_id, procedure_name=procedure_name)
                 ProcedurePrice.objects.create(
                     operation_verification=operation_verification,
                     dentist=dentist,
-                    procedure=item["procedure"],
+                    procedure=procedure,
                     price=item["price"],
                     currency=item.get("currency", "USD"),
                     option_notes=item.get("option_notes", "")
                 )
 
+            guarantee_data = validated_data.pop("guarantee")
             NoSurpriseGuarantee.objects.update_or_create(
                 operation_verification=operation_verification,
                 defaults=guarantee_data
@@ -281,6 +284,22 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
             dentist_verification.operations_verification = VERIFICATION_STATUS.SUBMIT
             dentist_verification.save()
             return operation_verification
+    
+    def get_procedure(self, procedure_id=None, procedure_name=None):
+        if procedure_id:
+            # procedure = Procedure.objects.filter(parent__isnull=True).get(id=procedure_id, type=PROCEDURE_CHOICES.OBJECTTIVE)
+            procedure = Procedure.objects.get(id=procedure_id, type=PROCEDURE_CHOICES.OBJECTTIVE)
+            if procedure is None:
+                raise serializers.ValidationError(
+                    "Wrong Procedure ID Submit."
+                )
+        else:
+            procedure = Procedure.objects.create(
+                name=procedure_name,
+                type=PROCEDURE_CHOICES.OBJECTTIVE,
+                base_price=0
+            )
+        return procedure
 
 class ProcedureMaterialVerificationItemSerializer(serializers.Serializer):
     own_procedure = serializers.PrimaryKeyRelatedField(queryset=ProcedurePrice.objects.all())

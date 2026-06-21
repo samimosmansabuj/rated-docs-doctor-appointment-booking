@@ -211,3 +211,10 @@ class REFUND_REASON(models.TextChoices):
     ADMIN_MANUAL = "ADMIN_MANUAL", "Admin Manual Refund"
 
 
+
+# Core App Choice Option---
+class PROCEDURE_CHOICES(models.TextChoices):
+    MAIN = "main", "Main"
+    OBJECTTIVE = "objective", "Objective"
+
+
