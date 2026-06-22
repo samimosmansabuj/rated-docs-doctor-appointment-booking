@@ -1,9 +1,10 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
 from core.permissions import IsAdmin
 from core.constants import DENTIST_VERIFICATION_STATUS, VERIFICATION_STATUS
-from dentist.serializer.serializers import ClinicalOperationVerificationSerializer, DentistLicenseVerificationSerializer, ClinicalPathVerificationSerializer
-from dentist.models import ClinicalPathVerification, DentistLicenseVerification, ClinicOperationVerification
+from dentist.serializer.serializers import (
+    DentistLicenseVerificationSerializer, ClinicalOperationVerificationSerializer, ClinicalPathVerificationSerializer, DentistVerificationDetailSerializer
+)
+from dentist.models import DentistVerification
 from core.constants import DENTIST_VERIFICATION_PHASE
 from core.utils.response import custom_response
 from core.utils.viewsets import OwnReadOnlyModelViewSet
@@ -13,131 +14,112 @@ from rest_framework.decorators import action
 from django.utils import timezone
 
 
-class DentistLicenseVerificationViewSet(OwnReadOnlyModelViewSet):
-    queryset = DentistLicenseVerification.objects.select_related("dentist","verification","registration_authority").all()
-    serializer_class = DentistLicenseVerificationSerializer
+class DentistVerificationViewSet(OwnReadOnlyModelViewSet):
+    queryset = DentistVerification.objects.select_related(
+        "dentist", "dentist_license_verification", "operation_verification", "clinical_path_verification",
+    ).prefetch_related(
+        "operation_verification__procedures_feature",
+        "operation_verification__procedures_feature__procedure",
+
+        "clinical_path_verification__procedure_material_verifications",
+        "clinical_path_verification__procedure_material_verifications__own_procedure",
+    )
+
+    serializer_class = DentistVerificationDetailSerializer
     permission_classes = [IsAdmin]
-
-    @action(detail=True, methods=["post"], url_path="approve")
-    def approve(self, request, pk=None):
-        instance = self.get_object()
-
-        if instance.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+    
+    @action(detail=True, methods=["post"], url_path="approve-license")
+    def approve_license(self, request, pk=None):
+        verification = self.get_object()
+        license_obj = verification.dentist_license_verification
+        if license_obj.status == DENTIST_VERIFICATION_STATUS.APPROVED:
             return custom_response(
                 success=False,
-                message="Already approved.",
+                message="License already approved.",
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        instance.status = DENTIST_VERIFICATION_STATUS.APPROVED
-        instance.is_verified = True
-        instance.verified_at = timezone.now()
-        instance.save(update_fields=["status", "is_verified", "verified_at"])
+        license_obj.status = DENTIST_VERIFICATION_STATUS.APPROVED
+        license_obj.is_verified = True
+        license_obj.verified_at = timezone.now()
+        license_obj.save(update_fields=["status", "is_verified", "verified_at"])
 
-        # update parent verification table
-        verification = instance.verification
         verification.license_verification = VERIFICATION_STATUS.APPROVED
         verification.save(update_fields=["license_verification"])
 
-        # update dentist phase
-        profile = instance.dentist
-        profile.verification_phase = DENTIST_VERIFICATION_PHASE.TWO
-        profile.save(update_fields=["verification_phase"])
-
+        verification.dentist.verification_phase = (
+            DENTIST_VERIFICATION_PHASE.TWO
+        )
+        verification.dentist.save(
+            update_fields=["verification_phase"]
+        )
+        
         return custom_response(
             success=True,
             message="License approved successfully.",
-            data=self.get_serializer(instance).data,
+            data=DentistLicenseVerificationSerializer(license_obj).data,
             status=status.HTTP_200_OK
         )
 
-class DentistClinicOperationVerificationViewSet(OwnReadOnlyModelViewSet):
-    queryset = ClinicOperationVerification.objects.select_related(
-        "dentist", "verification", "clinic", "verified_by", "sterilization_verification", "no_surprise_guarantee"
-    ).prefetch_related(
-        "procedures_feature", "procedures_feature__procedure",
-    ).all()
-    serializer_class = ClinicalOperationVerificationSerializer
-    permission_classes = [IsAdmin]
-
-    @action(detail=True, methods=["post"], url_path="approve")
-    def approve(self, request, pk=None):
-        instance = self.get_object()
-
-        if instance.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+    @action(detail=True, methods=["post"], url_path="approve-operation")
+    def approve_operation(self, request, pk=None):
+        verification = self.get_object()
+        operation_obj = verification.operation_verification
+        if operation_obj.status == DENTIST_VERIFICATION_STATUS.APPROVED:
             return custom_response(
                 success=False,
-                message="Already approved.",
+                message="Operation already approved.",
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        instance.status = DENTIST_VERIFICATION_STATUS.APPROVED
-        instance.is_verified = True
-        instance.verified_at = timezone.now()
-        instance.verified_by = request.user
-        instance.save(update_fields=["status", "is_verified", "verified_at", "verified_by"])
+        operation_obj.status = DENTIST_VERIFICATION_STATUS.APPROVED
+        operation_obj.is_verified = True
+        operation_obj.verified_at = timezone.now()
+        operation_obj.verified_by = request.user
+        operation_obj.save(update_fields=["status", "is_verified", "verified_at", "verified_by"])
 
-        # update parent verification table
-        verification = instance.verification
-        verification.operations_verification = VERIFICATION_STATUS.APPROVED
+        verification.operations_verification = (VERIFICATION_STATUS.APPROVED)
         verification.save(update_fields=["operations_verification"])
 
-        # update dentist phase
-        profile = instance.dentist
-        profile.verification_phase = DENTIST_VERIFICATION_PHASE.THREE
-        profile.save(update_fields=["verification_phase"])
-
+        verification.dentist.verification_phase = (DENTIST_VERIFICATION_PHASE.THREE)
+        verification.dentist.save(update_fields=["verification_phase"])
+        
         return custom_response(
             success=True,
             message="Clinic operation verification approved successfully.",
-            data=self.get_serializer(instance).data,
+            data=ClinicalOperationVerificationSerializer(operation_obj).data,
             status=status.HTTP_200_OK
         )
-
-class DentistClinicalDepthVerificationViewSet(OwnReadOnlyModelViewSet):
-    queryset = ClinicalPathVerification.objects.select_related(
-        "dentist", "verification", "clinic", "verified_by"
-    ).prefetch_related(
-        "procedure_material_verifications", "procedure_material_verifications__own_procedure",
-    ).all()
-    serializer_class = ClinicalPathVerificationSerializer
-    permission_classes = [IsAdmin]
-
-    @action(detail=True, methods=["post"], url_path="approve")
-    def approve(self, request, pk=None):
-        instance = self.get_object()
-
-        if instance.status == DENTIST_VERIFICATION_STATUS.APPROVED:
+    
+    @action(detail=True, methods=["post"], url_path="approve-clinical")
+    def approve_clinical(self, request, pk=None):
+        verification = self.get_object()
+        clinical_obj = verification.clinical_path_verification
+        if clinical_obj.status == DENTIST_VERIFICATION_STATUS.APPROVED:
             return custom_response(
                 success=False,
-                message="Already approved.",
+                message="Clinical verification already approved.",
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        instance.status = DENTIST_VERIFICATION_STATUS.APPROVED
-        instance.is_verified = True
-        instance.verified_at = timezone.now()
-        instance.verified_by = request.user
-        instance.save(update_fields=["status", "is_verified", "verified_at", "verified_by"])
+        clinical_obj.status = DENTIST_VERIFICATION_STATUS.APPROVED
+        clinical_obj.is_verified = True
+        clinical_obj.verified_at = timezone.now()
+        clinical_obj.verified_by = request.user
+        clinical_obj.save(update_fields=["status", "is_verified", "verified_at", "verified_by"])
 
-        # update parent verification table
-        verification = instance.verification
-        verification.clinical_verification = VERIFICATION_STATUS.APPROVED
+        verification.clinical_verification = (VERIFICATION_STATUS.APPROVED)
         verification.save(update_fields=["clinical_verification"])
 
-        # update dentist phase
-        profile = instance.dentist
-        profile.verification_phase = DENTIST_VERIFICATION_PHASE.COMPLETE
-        profile.save(update_fields=["verification_phase"])
-
+        verification.dentist.verification_phase = (DENTIST_VERIFICATION_PHASE.COMPLETE)
+        verification.dentist.save(update_fields=["verification_phase"])
+        
         return custom_response(
             success=True,
-            message="Clinic operation verification approved successfully.",
-            data=self.get_serializer(instance).data,
+            message="Clinical path verification approved successfully.",
+            data=ClinicalPathVerificationSerializer(clinical_obj).data,
             status=status.HTTP_200_OK
         )
-
-
 
 
 

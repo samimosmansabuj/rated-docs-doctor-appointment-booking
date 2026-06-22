@@ -80,7 +80,6 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
     
     def success_response(self, serializer):
         serializer.save()
-
         return custom_response(
             success=True,
             message="Operational verification submitted successfully.",
@@ -136,7 +135,7 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
             }
         )
 
-    def create(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
                 serializer = self.get_serializer(data=request.data)

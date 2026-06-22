@@ -8,17 +8,15 @@ from dentist.views import (
     
     AdminDentistViewSet, DentistProfileViewSet, PatientDentistViewSet
 )
-from dentist.admin_views import DentistClinicOperationVerificationViewSet, DentistLicenseVerificationViewSet, DentistClinicalDepthVerificationViewSet
+from dentist.admin_views import DentistVerificationViewSet
 
 
 patient_router = DefaultRouter()
-patient_router.register("dentists", PatientDentistViewSet, basename="dentists-list")
+patient_router.register("dentists", PatientDentistViewSet, basename="patient-dentists-list")
 
 admin_router = DefaultRouter()
-admin_router.register("dentists", AdminDentistViewSet, basename="dentists-list")
-admin_router.register(r"dentist-license-verifications", DentistLicenseVerificationViewSet, basename="dentist-license-verification")
-admin_router.register(r"dentist-clinic-operation-verifications", DentistClinicOperationVerificationViewSet, basename="dentist-clinic-operation-verification")
-admin_router.register(r"dentist-clinic-depth-verifications", DentistClinicalDepthVerificationViewSet, basename="dentist-clinic-depth-verification")
+admin_router.register("dentists", AdminDentistViewSet, basename="admin-dentists-list")
+admin_router.register("dentist-verification", DentistVerificationViewSet, basename="dentists-verification")
 
 dentist_router = DefaultRouter()
 # dentist_router.register("own", DentistProfileViewSet, basename="my-profile")

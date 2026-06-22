@@ -3,7 +3,7 @@ from rest_framework.serializers import ValidationError
 from django.utils import timezone
 from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS, PROCEDURE_CHOICES
 from core.models import LicenseRegistrationAuthority, Procedure
-from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification
+from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, DentistProfile
 from django.db import transaction
 
 
@@ -181,7 +181,7 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
 class ProcedurePriceItemSerializer(serializers.Serializer):
     procedure_name = serializers.CharField(required=False)
     procedure_id = serializers.IntegerField(required=False)
-    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, required=True)
     currency = serializers.CharField(default="USD")
     option_notes = serializers.CharField(required=False, allow_blank=True)
 
@@ -197,6 +197,7 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
     guarantee = NoSurpriseGuaranteeSerializer()
     
     def validate(self, attrs):
+        print("attrs: ", attrs)
         # jci_certificate = attrs.get("jci_certificate")
         # walkthrough_video = attrs.get("walkthrough_video")
         # if not jci_certificate and not walkthrough_video:
@@ -437,6 +438,33 @@ class ClinicalPathVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClinicalPathVerification
         fields = "__all__"
+
+class DentistProfileSerializerForVerification(serializers.ModelSerializer):
+    class Meta:
+        model = DentistProfile
+        fields = "__all__"
+
+class DentistVerificationDetailSerializer(serializers.ModelSerializer):
+    dentist = DentistProfileSerializerForVerification(read_only=True)
+    license_step = DentistLicenseVerificationSerializer(source="dentist_license_verification", read_only=True)
+    operation_step = ClinicalOperationVerificationSerializer(source="operation_verification", read_only=True)
+    clinical_step = ClinicalPathVerificationSerializer(source="clinical_path_verification", read_only=True)
+
+    class Meta:
+        model = DentistVerification
+        fields = [
+            "id", "dentist",
+            
+            "license_verification",
+            "operations_verification",
+            "clinical_verification",
+            "face_match_score",
+
+            "license_step",
+            "operation_step",
+            "clinical_step",
+        ]
+
 # -------------------------------------------------------------------------------------------------
 # =============================Admin or Verification Object Model Serializer=============================
 

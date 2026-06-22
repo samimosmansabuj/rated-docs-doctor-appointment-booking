@@ -3,7 +3,9 @@ from dentist.models import DentistProfile
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .serializers import ResendOTPSerializer, SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer
+from .serializers import (
+    ResendOTPSerializer, SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer, ChangePasswordSerializer
+)
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
 from core.constants import USER_ROLE_CHOICES
@@ -123,6 +125,20 @@ class VerifyTokenAPIView(APIView):
                 detail="Invalid or expired token",
                 status=401
             )
+
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+        return custom_response(
+            success=True,
+            message="Password changed successfully.",
+            status=status.HTTP_200_OK
+        )
 
 # ======================Authentication Views=========================
 # ==========================================================================
