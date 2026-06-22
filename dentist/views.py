@@ -21,7 +21,7 @@ from rest_framework.views import APIView
 from core.permissions import IsAdmin, IsPatient, IsDentist
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-
+from django.db.models import Q
 from rest_framework.exceptions import NotFound
 
 
@@ -92,7 +92,6 @@ class AdminDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
     serializer_class = DentistProfileDetailSerializer
 
 class PatientDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
-    # permission_classes = [IsPatient]
     serializer_class = PatientDentistDetailSerializer
     
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -102,7 +101,7 @@ class PatientDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
 
     def get_queryset(self):
         return super().get_queryset().filter(
-            is_verified=True
+            Q(is_verified=True) | Q(is_claimed=True)
         )
 
 class DentistProfileViewSet(DentistQuerysetMixin, APIView):

@@ -112,7 +112,8 @@ class DentistVerificationViewSet(OwnReadOnlyModelViewSet):
         verification.save(update_fields=["clinical_verification"])
 
         verification.dentist.verification_phase = (DENTIST_VERIFICATION_PHASE.COMPLETE)
-        verification.dentist.save(update_fields=["verification_phase"])
+        verification.dentist.is_verified = True
+        verification.dentist.save(update_fields=["verification_phase", "is_verified"])
         
         return custom_response(
             success=True,
