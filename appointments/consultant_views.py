@@ -65,10 +65,13 @@ class ConsultationTreatmentInterestAPIView(ConsultationMixin, OwnAPIView):
         )
 
     def success_response(self, serializer):
-        serializer.save()
+        consultation = serializer.save()
         return custom_response(
             success=True,
-            message="Added your treatment interest procedure."
+            message="Added your treatment interest procedure.",
+            data={
+                "consultation_id": consultation.id
+            }
         )
 
 class ConsultationBudgetTravelAPIView(ConsultationMixin, OwnAPIView):
@@ -90,10 +93,13 @@ class ConsultationBudgetTravelAPIView(ConsultationMixin, OwnAPIView):
         )
 
     def success_response(self, serializer):
-        serializer.save()
+        consultation = serializer.save()
         return custom_response(
             success=True,
-            message="Update Budget and Travel Time."
+            message="Update Budget and Travel Time.",
+            data={
+                "consultation_id": consultation.id
+            }
         )
 
 class ConsultationDentalHistoryAPIView(ConsultationMixin, OwnAPIView):
@@ -115,10 +121,13 @@ class ConsultationDentalHistoryAPIView(ConsultationMixin, OwnAPIView):
         )
 
     def success_response(self, serializer):
-        serializer.save()
+        consultation = serializer.save()
         return custom_response(
             success=True,
-            message="Update Dental History."
+            message="Update Dental History.",
+            data={
+                "consultation_id": consultation.id
+            }
         )
 
 class ConsultationDentalPhotoAPIView(ConsultationMixin, OwnAPIView):
@@ -165,10 +174,13 @@ class ConsultationXrayAPIView(ConsultationMixin, OwnAPIView):
         )
 
     def success_response(self, serializer):
-        serializer.save()
+        consultation = serializer.save()
         return custom_response(
             success=True,
             message=f"X-ray Report uploaded successfully.",
+            data={
+                "consultation_id": consultation.id
+            }
         )
 
 class ConsultationScheduleAPIView(OwnAPIView):
@@ -181,13 +193,6 @@ class ConsultationScheduleAPIView(OwnAPIView):
         return custom_response(
             success=True,
             message=f"{len(consultations)} Consultation request submitted successfully.",
-            # data={
-            #     "total_requests": len(consultations),
-            #     "consultation_ids": [
-            #         str(obj.id)
-            #         for obj in consultations
-            #     ]
-            # }
         )
 
 

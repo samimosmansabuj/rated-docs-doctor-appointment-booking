@@ -25,7 +25,7 @@ from django.conf import settings
 class MyConsultationViewSet(OwnReadOnlyModelViewSet):
     permission_classes = [IsPatient]
     serializer_class = ConsultationDetailsSerializer
-
+    
     def get_queryset(self):
         return (
             Consultation.objects
@@ -67,8 +67,6 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
             )
         if hasattr(appointment, "escrow_payment"):
             payment = appointment.escrow_payment
-            # if payment.status == PAYMENT_STATUS.PENDING:
-            #     pass
         else:
             payment, _ = EscrowPayment.objects.get_or_create(
                 appointment=appointment,
@@ -91,8 +89,8 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
             consultation = self.get_object()
             appointment = consultation.appointment
             data = request.data.copy()
-            data["appointment_id"] = consultation.id
-            data["consultation_id"] = appointment.id
+            data["appointment_id"] = appointment.id
+            data["consultation_id"] = consultation.id
             
             serializer = AppointmentDecisionSerializer(data=data, context={"request": request})
             serializer.is_valid(raise_exception=True)
@@ -102,7 +100,6 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
             decision = serializer.validated_data["decision"]
             
             payment_data = self.escrow_payment(appointment)
-            
             return Response(
                 {
                     "success": True,

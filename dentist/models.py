@@ -1,7 +1,7 @@
 from django.db import models
 from core.common_models import TimeStampedModel, SoftDeleteModel
 from core.constants import (
-    DENTIST_SPECIALTY, DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE, VERIFICATION_STATUS
+    DENTIST_SPECIALTY, DENTIST_VERIFICATION_PHASE, WEEK_DAY, DAY_STATUS, APPOINTMENT_SLOT_EXCEPTION_TYPE, DENTIST_VERIFICATION_STATUS, DENTIST_DOCUMENT_TYPE, VERIFICATION_STATUS, WALLET_TRANSACTION_TYPE
 )
 from rest_framework.exceptions import ValidationError
 from account.models import User
@@ -48,6 +48,23 @@ class DentistAddress(TimeStampedModel, SoftDeleteModel):
     country = models.CharField(max_length=100)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
+
+class DentistWallet(TimeStampedModel):
+    dentist = models.OneToOneField(DentistProfile, on_delete=models.CASCADE, related_name="wallet")
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    pending_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    stripe_account_id = models.CharField(max_length=255, blank=True, null=True)
+
+class DentistWalletTransaction(TimeStampedModel):
+    wallet = models.ForeignKey(DentistWallet, on_delete=models.CASCADE, related_name="transactions")
+    appointment = models.ForeignKey("appointments.Appointment", on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    transaction_type = models.CharField(max_length=20, choices=WALLET_TRANSACTION_TYPE.choices)
+    note = models.TextField(blank=True)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+
+
+
 
 # =====================================================================
 # ------------------------Dentist Availability------------------------

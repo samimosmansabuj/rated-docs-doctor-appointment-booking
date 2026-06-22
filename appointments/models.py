@@ -56,6 +56,7 @@ class EscrowPayment(TimeStampedModel):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="USD")
     status = models.CharField(max_length=30, choices=ESCROW_PAYMENT_STATUS.choices, default=ESCROW_PAYMENT_STATUS.PENDING)
+    released_at = models.DateTimeField(null=True, blank=True)
 
 class Payment(TimeStampedModel):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="payments")

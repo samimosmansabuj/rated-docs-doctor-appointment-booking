@@ -76,6 +76,10 @@ class DENTIST_DOCUMENT_TYPE(models.TextChoices):
     CERTIFICATE = "CERTIFICATE", "Certificate"
     INSURANCE = "INSURANCE", "Insurance"
 
+class WALLET_TRANSACTION_TYPE(models.TextChoices):
+    CREDIT = "CREDIT", "Credit"
+    DEBIT = "DEBIT", "Debit"
+    WITHDRAW = "WITHDRAW", "Withdraw"
 
 # Log and Notification App Choice Option---
 class NOTIFICATION_FOR(models.TextChoices):

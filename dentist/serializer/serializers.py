@@ -178,10 +178,11 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
             dentist_verification.save()
             return license_verification
 
+# Clinical Operation Verification Phase-----
 class ProcedurePriceItemSerializer(serializers.Serializer):
     procedure_name = serializers.CharField(required=False)
     procedure_id = serializers.IntegerField(required=False)
-    price = serializers.DecimalField(max_digits=12, decimal_places=2, required=True)
+    price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     currency = serializers.CharField(default="USD")
     option_notes = serializers.CharField(required=False, allow_blank=True)
 
@@ -197,7 +198,6 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
     guarantee = NoSurpriseGuaranteeSerializer()
     
     def validate(self, attrs):
-        print("attrs: ", attrs)
         # jci_certificate = attrs.get("jci_certificate")
         # walkthrough_video = attrs.get("walkthrough_video")
         # if not jci_certificate and not walkthrough_video:
@@ -302,6 +302,7 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
             )
         return procedure
 
+# Clinical Depth Verification Phase-----
 class ProcedureMaterialVerificationItemSerializer(serializers.Serializer):
     own_procedure = serializers.PrimaryKeyRelatedField(queryset=ProcedurePrice.objects.all())
     brand_name = serializers.CharField(required=True)
