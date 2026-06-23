@@ -35,3 +35,10 @@ class LicenseRegistrationAuthority(TimeStampedModel):
 
 
 
+
+class PostMethodPayloadStore(TimeStampedModel):
+    payload = models.JSONField(default=dict)
+    payload_text = models.TextField(blank=True, null=True)
+
+
+

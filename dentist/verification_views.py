@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 import json
 from django.db import transaction
+from core.models import PostMethodPayloadStore
 
 class DentistLicenseVerificationSubmitAPIView(OwnAPIView):
     permission_classes = [IsDentist]
@@ -222,6 +223,10 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
         )
 
     def post(self, request, *args, **kwargs) -> Response:
+        try:
+            PostMethodPayloadStore.objects.create(payload=request.data)
+        except:
+            PostMethodPayloadStore.objects.create(payload_text=request.data)
         try:
             if self.get_serializer(data=request.data):
                 serializer = self.get_serializer(data=request.data)
