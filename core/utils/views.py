@@ -45,9 +45,6 @@ class OwnAPIView(APIView):
         try:
             if self.get_serializer(data=request.data):
                 serializer = self.get_serializer(data=request.data)
-                # if not serializer.is_valid():
-                #     print(serializer.errors)
-                #     return Response(serializer.errors)
                 serializer.is_valid(raise_exception=True)
                 return self.success_response(serializer)
             return self.success_response()

@@ -138,18 +138,20 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
     def post(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                data = {}
                 data_copy = request.data.copy()
-                procedures = json.loads(data_copy["procedures"])
-                guarantee = json.loads(data_copy["guarantee"])
+                # procedures = json.loads(data_copy["procedures"])
+                # guarantee = json.loads(data_copy["guarantee"])
                 
-                data["procedures"] = procedures
-                data["guarantee"] = guarantee
-                data["jci_certificate"] = data_copy["jci_certificate"]
-                data["walkthrough_video"] = data_copy["walkthrough_video"]
+                # data = {}
+                # data["procedures"] = procedures
+                # data["guarantee"] = guarantee
+                # data["jci_certificate"] = data_copy["jci_certificate"]
+                # data["walkthrough_video"] = data_copy["walkthrough_video"]
                 
-                print("data: ", data)
-                serializer = self.get_serializer(data=data)
+                
+                
+                print("data: ", data_copy)
+                serializer = self.get_serializer(data=data_copy)
                 serializer.is_valid(raise_exception=True)
                 return self.success_response(serializer)
         except ValidationError as e:
@@ -218,6 +220,26 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
                 "data": ClinicalPathVerificationSerializer(instance).data
             }
         )
+
+    def post(self, request, *args, **kwargs) -> Response:
+        try:
+            if self.get_serializer(data=request.data):
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                return self.success_response(serializer)
+            return self.success_response()
+        except ValidationError as e:
+            return self.serializer_error_response(
+                serializer=locals().get("serializer"),
+                error=e
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "detail": str(e)
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
 
 class DentistProcedureReadListView(APIView):
     permission_classes = [IsDentist]

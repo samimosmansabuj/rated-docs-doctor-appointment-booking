@@ -205,13 +205,10 @@ class ClinicalPathVerification(TimeStampedModel):
 class ProcedureMaterialVerification(TimeStampedModel):
     clinical_path = models.ForeignKey(ClinicalPathVerification, on_delete=models.CASCADE, related_name="procedure_material_verifications")
     own_procedure = models.ForeignKey(ProcedurePrice, on_delete=models.CASCADE, related_name="procedure_material_verifications")
-    brand_name = models.CharField(max_length=255)
-
     ce_certificate = models.FileField(upload_to="documents/material-document/", blank=True, null=True)
     material_brands = models.FileField(upload_to="documents/material-document/", blank=True, null=True)
     invoice = models.FileField(upload_to="documents/material-document/", blank=True, null=True)
     protocol_pdf = models.FileField(upload_to="documents/material-document/", blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
 
     class Meta:

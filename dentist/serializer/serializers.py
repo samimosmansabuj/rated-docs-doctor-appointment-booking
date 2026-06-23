@@ -3,7 +3,7 @@ from rest_framework.serializers import ValidationError
 from django.utils import timezone
 from core.constants import DENTIST_DOCUMENT_TYPE, DENTIST_VERIFICATION_PHASE, DENTIST_VERIFICATION_STATUS, USER_ROLE_CHOICES, VERIFICATION_STATUS, PROCEDURE_CHOICES
 from core.models import LicenseRegistrationAuthority, Procedure
-from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, DentistProfile
+from dentist.models import ClinicOperationVerification, ClinicalPathVerification, DentistLicenseVerification, DentistVerification, NoSurpriseGuarantee, ProcedureMaterialVerification, ProcedurePrice, SterilizationVerification, DentistProfile, DentistAddress
 from django.db import transaction
 
 
@@ -305,15 +305,19 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
 # Clinical Depth Verification Phase-----
 class ProcedureMaterialVerificationItemSerializer(serializers.Serializer):
     own_procedure = serializers.PrimaryKeyRelatedField(queryset=ProcedurePrice.objects.all())
-    brand_name = serializers.CharField(required=True)
-    # ce_certificate = serializers.FileField(required=False)
-    # material_brands = serializers.FileField(required=False)
-    # invoice = serializers.FileField(required=False)
-    # protocol_pdf = serializers.FileField(required=False)
-    # notes = serializers.CharField(required=False, allow_blank=True)
+    ce_certificate = serializers.FileField(required=False)
+    material_brands = serializers.FileField(required=False)
+    invoice = serializers.FileField(required=False)
+    protocol_pdf = serializers.FileField(required=False)
+
+class ClinicAddressVerificationSubmitSerializer(serializers.Serializer):
+    address = serializers.CharField(required=True)
+    lat = serializers.CharField(required=False)
+    lng = serializers.CharField(required=False)
 
 class ClinicalPathVerificationSubmitSerializer(serializers.Serializer):
     materials = ProcedureMaterialVerificationItemSerializer(many=True, required=True)
+    clinic_address = ClinicAddressVerificationSubmitSerializer(required=True)
 
     def validate_materials(self, value):
         user = self.context["request"].user
@@ -360,22 +364,27 @@ class ClinicalPathVerificationSubmitSerializer(serializers.Serializer):
                 )
 
             materials = validated_data["materials"]
-            ProcedureMaterialVerification.objects.filter(
-                clinical_path=clinical_path
-            ).delete()
-
+            ProcedureMaterialVerification.objects.filter(clinical_path=clinical_path).delete()
             for item in materials:
                 own_procedure = item["own_procedure"]
                 ProcedureMaterialVerification.objects.create(
                     clinical_path=clinical_path,
                     own_procedure=own_procedure,
-                    brand_name=item["brand_name"],
-                    # ce_certificate=item.get("ce_certificate"),
-                    # material_brands=item.get("material_brands"),
-                    # invoice=item.get("invoice"),
-                    # protocol_pdf=item.get("protocol_pdf"),
-                    # notes=item.get("notes", "")
+                    ce_certificate=item.get("ce_certificate"),
+                    material_brands=item.get("material_brands"),
+                    invoice=item.get("invoice"),
+                    protocol_pdf=item.get("protocol_pdf"),
                 )
+            
+            clinic_address = validated_data["clinic_address"]
+            print("clinic_address: ", clinic_address)
+            dentist_address, created = DentistAddress.objects.get_or_create(profile=dentist)
+            dentist_address.address_line_1 = clinic_address.get("address")
+            dentist_address.latitude = clinic_address.get("lat", None)
+            dentist_address.longitude = clinic_address.get("lng", None)
+            dentist_address.save()
+            print("dentist_address: ", dentist_address)
+            
             
             verification.clinical_verification = VERIFICATION_STATUS.SUBMIT
             verification.save()
