@@ -222,17 +222,53 @@ class ClinicalDepthVerificationSubmitAPIView(OwnAPIView):
             }
         )
 
+    def build_clinical_path_payload(self, request):
+        import json
+        import re
+        from collections import defaultdict
+
+        parsed_data = {}
+
+        # clinic_address json string
+        clinic_address = request.data.get("clinic_address")
+
+        if clinic_address:
+            try:
+                parsed_data["clinic_address"] = json.loads(clinic_address)
+            except json.JSONDecodeError:
+                parsed_data["clinic_address"] = {}
+        else:
+            parsed_data["clinic_address"] = {}
+
+        # materials
+        materials = defaultdict(dict)
+
+        for key in request.data.keys():
+            match = re.match(r"materials\[(\d+)\]\.(.+)", key)
+
+            if match:
+                index = int(match.group(1))
+                field = match.group(2)
+
+                materials[index][field] = request.data.get(key)
+
+        parsed_data["materials"] = [
+            materials[i]
+            for i in sorted(materials.keys())
+        ]
+
+        return parsed_data
+    
     def post(self, request, *args, **kwargs) -> Response:
         try:
             PostMethodPayloadStore.objects.create(payload=request.data)
         except:
             PostMethodPayloadStore.objects.create(payload_text=request.data)
         try:
-            if self.get_serializer(data=request.data):
-                serializer = self.get_serializer(data=request.data)
-                serializer.is_valid(raise_exception=True)
-                return self.success_response(serializer)
-            return self.success_response()
+            parsed_data = self.build_clinical_path_payload(request)
+            serializer = self.get_serializer(data=parsed_data)
+            serializer.is_valid(raise_exception=True)
+            return self.success_response(serializer)
         except ValidationError as e:
             return self.serializer_error_response(
                 serializer=locals().get("serializer"),
