@@ -140,19 +140,19 @@ class ClinicalOperationVerificationSubmitAPIView(OwnAPIView):
         try:
             with transaction.atomic():
                 data_copy = request.data.copy()
-                # procedures = json.loads(data_copy["procedures"])
-                # guarantee = json.loads(data_copy["guarantee"])
+                procedures = json.loads(data_copy["procedures"])
+                guarantee = json.loads(data_copy["guarantee"])
                 
-                # data = {}
-                # data["procedures"] = procedures
-                # data["guarantee"] = guarantee
-                # data["jci_certificate"] = data_copy["jci_certificate"]
-                # data["walkthrough_video"] = data_copy["walkthrough_video"]
+                data = {}
+                data["procedures"] = procedures
+                data["guarantee"] = guarantee
+                data["jci_certificate"] = data_copy["jci_certificate"]
+                data["walkthrough_video"] = data_copy["walkthrough_video"]
                 
                 
                 
-                print("data: ", data_copy)
-                serializer = self.get_serializer(data=data_copy)
+                # print("data: ", data_copy)
+                serializer = self.get_serializer(data=data)
                 serializer.is_valid(raise_exception=True)
                 return self.success_response(serializer)
         except ValidationError as e:
