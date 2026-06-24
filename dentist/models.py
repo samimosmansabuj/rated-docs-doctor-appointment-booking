@@ -129,6 +129,7 @@ class DentistLicenseVerification(TimeStampedModel):
     status = models.CharField(max_length=20, choices=DENTIST_VERIFICATION_STATUS.choices, default=DENTIST_VERIFICATION_STATUS.SUBMITTED)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(blank=True, null=True)
+    verified_by = models.ForeignKey("account.User" ,null=True, blank=True, on_delete=models.SET_NULL)
     reviewer_notes = models.TextField(blank=True)
 
 # Clinical Operation Verification Phase-----

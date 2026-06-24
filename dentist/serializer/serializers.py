@@ -32,6 +32,7 @@ class DentistVerificationStatusSerializer(serializers.Serializer):
         DENTIST_VERIFICATION_PHASE.ONE: "License Verification",
         DENTIST_VERIFICATION_PHASE.TWO: "Operations Verification",
         DENTIST_VERIFICATION_PHASE.THREE: "Clinical Verification",
+        DENTIST_VERIFICATION_PHASE.IN_REVIEW: "Verification in Review",
         DENTIST_VERIFICATION_PHASE.COMPLETE: "Verification Complete",
     }
     
@@ -40,6 +41,7 @@ class DentistVerificationStatusSerializer(serializers.Serializer):
             DENTIST_VERIFICATION_PHASE.ONE: verification.license_verification,
             DENTIST_VERIFICATION_PHASE.TWO: verification.operations_verification,
             DENTIST_VERIFICATION_PHASE.THREE: verification.clinical_verification,
+            DENTIST_VERIFICATION_PHASE.IN_REVIEW: DENTIST_VERIFICATION_PHASE.IN_REVIEW,
             DENTIST_VERIFICATION_PHASE.COMPLETE: VERIFICATION_STATUS.APPROVED,
         }
 
@@ -62,17 +64,7 @@ class DentistVerificationStatusSerializer(serializers.Serializer):
             return {"phase": next_phase, "label": self.PHASE_LABELS[next_phase]}
         except (ValueError, IndexError):
             return None
-    
-    # def get_next_phase(self, obj):
-    #     verification = obj.dentist_verification
-    #     if (verification.license_verification != VERIFICATION_STATUS.APPROVED):
-    #         return {"phase": DENTIST_VERIFICATION_PHASE.ONE, "label": "License Verification"}
-    #     if (verification.operations_verification != VERIFICATION_STATUS.APPROVED):
-    #         return {"phase": DENTIST_VERIFICATION_PHASE.TWO, "label": "Operations Verification"}
-    #     if (verification.clinical_verification != VERIFICATION_STATUS.APPROVED):
-    #         return {"phase": DENTIST_VERIFICATION_PHASE.THREE, "label": "Clinical Verification"}
-    #     return None
-    
+        
     def get_progress_percentage(self, obj):
         verification = obj.dentist_verification
         approved_count = sum([
@@ -84,7 +76,6 @@ class DentistVerificationStatusSerializer(serializers.Serializer):
 
     def get_is_verified(self, obj):
         verification = obj.dentist_verification
-
         return all([
             verification.license_verification == VERIFICATION_STATUS.APPROVED,
             verification.operations_verification == VERIFICATION_STATUS.APPROVED,
@@ -93,7 +84,6 @@ class DentistVerificationStatusSerializer(serializers.Serializer):
 
     def get_steps(self, obj):
         verification = obj.dentist_verification
-
         return [
             {
                 "phase": DENTIST_VERIFICATION_PHASE.ONE,
@@ -176,6 +166,14 @@ class DentistLicenseVerificationSubmitSerializer(serializers.Serializer):
             )
             dentist_verification.license_verification = VERIFICATION_STATUS.SUBMIT
             dentist_verification.save()
+            
+            dentist_verification.dentist.verification_phase = (
+                DENTIST_VERIFICATION_PHASE.TWO
+            )
+            dentist_verification.dentist.save(
+                update_fields=["verification_phase"]
+            )
+            
             return license_verification
 
 # Clinical Operation Verification Phase-----
@@ -284,6 +282,10 @@ class ClinicalOperationVerificationSubmitSerializer(serializers.Serializer):
             
             dentist_verification.operations_verification = VERIFICATION_STATUS.SUBMIT
             dentist_verification.save()
+            
+            dentist_verification.dentist.verification_phase = (DENTIST_VERIFICATION_PHASE.THREE)
+            dentist_verification.dentist.save(update_fields=["verification_phase"])
+            
             return operation_verification
     
     def get_procedure(self, procedure_id=None, procedure_name=None):
@@ -388,6 +390,10 @@ class ClinicalPathVerificationSubmitSerializer(serializers.Serializer):
             
             verification.clinical_verification = VERIFICATION_STATUS.SUBMIT
             verification.save()
+            
+            verification.dentist.verification_phase = (DENTIST_VERIFICATION_PHASE.IN_REVIEW)
+            verification.dentist.save(update_fields=["verification_phase"])
+            
             return clinical_path
 
 # ------------------------Dentist Verification------------------------

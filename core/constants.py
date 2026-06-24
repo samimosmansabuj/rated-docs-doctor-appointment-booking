@@ -33,6 +33,7 @@ class DENTIST_VERIFICATION_PHASE(models.TextChoices):
     ONE = "LICENSE", "License"
     TWO = "OPERATIONAL", "Operational"
     THREE = "CLINICAL", "Clinical"
+    IN_REVIEW = "IN_REVIEW", "In Review"
     COMPLETE = "COMPLETE", "Complete"
 
 class VERIFICATION_STATUS(models.TextChoices):

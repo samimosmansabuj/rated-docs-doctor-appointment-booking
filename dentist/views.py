@@ -37,9 +37,7 @@ class DentistVerificationProgressAPIView(APIView):
     def get(self, request):
         try:
             dentist = self.get_dentist()
-            serializer = DentistVerificationStatusSerializer(
-                dentist
-            )
+            serializer = DentistVerificationStatusSerializer(dentist)
             return Response({
                 "success": True,
                 "data": serializer.data
