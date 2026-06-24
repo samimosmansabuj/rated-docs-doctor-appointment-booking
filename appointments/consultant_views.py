@@ -1,8 +1,10 @@
 from core.utils.response import custom_response
 from .consultant_models import Consultation
+from rest_framework.response import Response
+from rest_framework import status
 from core.constants import CONSULTATION_STATUS
 from core.permissions import IsPatient
-from core.utils.views import OwnAPIView
+from core.utils.views import OwnAPIView, APIView
 from .serializers.serializers import (
     ConsultationPatientInfoSerializer, ConsultationTreatmentInterestStep2Serializer, ConsultationBudgetTravelStep3Serializer,
     ConsultationDentalHistoryStep4Serializer, ConsultationDentalPhotoStep5Serializer, ConsultationXrayStep6Serializer, ConsultationScheduleStep7Serializer,
@@ -195,7 +197,30 @@ class ConsultationScheduleAPIView(OwnAPIView):
             message=f"{len(consultations)} Consultation request submitted successfully.",
         )
 
-
-
+class ConsultationGetAPIView(APIView):
+    permission_classes = [IsPatient]
+    
+    def get(self,request, *args, **kwargs):
+        patient = self.request.user.patient_profile
+        consultation, _ = Consultation.objects.get_or_create(
+            patient=patient,
+            status=CONSULTATION_STATUS.DRAFT
+        )
+        if consultation:
+            return Response(
+                {
+                    "success": True,
+                    "consultation": {
+                        "id": consultation.id
+                    }
+                }, status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {
+                    "success": True,
+                    "consultation": None
+                }, status=status.HTTP_200_OK
+            )
 
 

@@ -2,7 +2,7 @@ from django.urls import path, include
 from .consultant_views import (
     ConsultationPatientInfoAPIView, ConsultationTreatmentInterestAPIView,
     ConsultationBudgetTravelAPIView, ConsultationDentalHistoryAPIView, ConsultationDentalPhotoAPIView,
-    ConsultationXrayAPIView, ConsultationScheduleAPIView
+    ConsultationXrayAPIView, ConsultationScheduleAPIView, ConsultationGetAPIView
 )
 from .views import (
     MyConsultationViewSet, AdminConsultationViewSet, DentistConsultationViewSet,
@@ -25,6 +25,7 @@ dentist_router.register("treatments", DentistAppointmentViewSet, basename="denti
 
 urlpatterns = [
     # Create Consultation Object Step by Step---
+    path("consultations/get-id/", ConsultationGetAPIView.as_view()),
     path("consultations/step-1/", ConsultationPatientInfoAPIView.as_view()),
     path("consultations/step-2/", ConsultationTreatmentInterestAPIView.as_view()),
     path("consultations/step-3/", ConsultationBudgetTravelAPIView.as_view()),
