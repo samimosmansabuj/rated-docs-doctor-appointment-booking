@@ -32,6 +32,9 @@ class MyConsultationViewSet(OwnReadOnlyModelViewSet):
             .filter(
                 patient__user=self.request.user
             )
+            .exclude(
+                status=CONSULTATION_STATUS.DRAFT
+            )
             .select_related(
                 "patient__user", "dentist__user", "schedule", "dental_photo", "xrays", "dental_history", "video_session",
             )
