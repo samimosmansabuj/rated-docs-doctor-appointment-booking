@@ -65,7 +65,7 @@ class DentistProfileDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = DentistProfile
         fields = [
-            "id", "user", "clinic",
+            "id", "slug", "user", "clinic",
             "full_name", "phone", "specialty", "bio", "experience_years",
             "rating_avg", "total_reviews",
             "rdv_score", "response_time_avg",

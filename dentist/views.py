@@ -96,6 +96,10 @@ class PatientDentistViewSet(DentistQuerysetMixin, OwnReadOnlyModelViewSet):
     search_fields = ["full_name", "specialty", "clinic__name", "clinic__country", "clinic__city",]
     ordering_fields = ["rating_avg", "total_reviews", "experience_years", "rdv_score",]
     filterset_fields = ["specialty",]
+    
+    lookup_field = "slug"
+    
+    
 
     def get_queryset(self):
         return super().get_queryset().filter(
