@@ -12,6 +12,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 from django.contrib.auth.password_validation import validate_password
+from core.utils.mail_template_view import EmailOTPSend
 
 
 User = get_user_model()
@@ -74,6 +75,7 @@ class SignupSerializer(serializers.ModelSerializer):
     
     def send_otp(self, user):
         otp = OTP.objects.create(user=user, otp_code=self.generate_otp(), purpose=OTP_PURPOSE.EMAIL_VERIFICATION)
+        EmailOTPSend(otp_object=otp)
         return otp
 
 class AdminUserAddSerializer(serializers.ModelSerializer):
@@ -252,11 +254,14 @@ class ResendOTPSerializer(serializers.Serializer):
             purpose=OTP_PURPOSE.EMAIL_VERIFICATION,
             is_verified=False
         ).delete()
-        return OTP.objects.create(
+        
+        otp = OTP.objects.create(
             user=self.user,
             otp_code=self.generate_otp(),
             purpose=OTP_PURPOSE.EMAIL_VERIFICATION
         )
+        EmailOTPSend(otp_object=otp)
+        return otp
 
 class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, min_length=8)

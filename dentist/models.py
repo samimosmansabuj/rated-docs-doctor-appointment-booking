@@ -6,6 +6,7 @@ from core.constants import (
 from rest_framework.exceptions import ValidationError
 from account.models import User
 from core.models import LicenseRegistrationAuthority, Procedure
+from django.utils.text import slugify
 
 
 class Clinic(TimeStampedModel, SoftDeleteModel):
@@ -21,6 +22,7 @@ class DentistProfile(TimeStampedModel, SoftDeleteModel):
     clinic = models.ForeignKey(Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name="dentists")
 
     full_name = models.CharField(max_length=255, blank=True, null=True)
+    slug = models.SlugField(max_length=255, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     specialty = models.CharField(max_length=255, blank=True, null=True, choices=DENTIST_SPECIALTY.choices)
     bio = models.TextField(blank=True, null=True)
@@ -37,8 +39,31 @@ class DentistProfile(TimeStampedModel, SoftDeleteModel):
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(blank=True, null=True)
     
+    def generate_unique_slug(self):
+        base_slug = slugify(self.full_name)
+        slug = base_slug
+        counter = 1
+        while DentistProfile.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+    
+    def update_slug(self):
+        if self.full_name:
+            if not self.slug:
+                self.slug = self.generate_unique_slug()
+            elif self.pk:
+                old_instance = DentistProfile.objects.filter(pk=self.pk).first()
+                if old_instance and old_instance.full_name != self.full_name:
+                    self.slug = self.generate_unique_slug()
+        return None
+    
+    def save(self, *args, **kwargs):
+        self.update_slug()
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"{self.user.email} Dentist Profile"
+        return f"{self.user.email} Dentist Profile | {self.slug}"
 
 class DentistAddress(TimeStampedModel, SoftDeleteModel):
     profile = models.ForeignKey(DentistProfile, on_delete=models.CASCADE, related_name="dentist_address")

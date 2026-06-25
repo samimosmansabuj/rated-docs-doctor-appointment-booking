@@ -222,4 +222,7 @@ class PROCEDURE_CHOICES(models.TextChoices):
     MAIN = "main", "Main"
     OBJECTTIVE = "objective", "Objective"
 
+class MailConfigType(models.TextChoices):
+    SMTP = "smtp"
+    API = "api"
 
