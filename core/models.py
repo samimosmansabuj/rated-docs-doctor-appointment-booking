@@ -25,9 +25,9 @@ class LicenseRegistrationAuthority(TimeStampedModel):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = "license_registration_authorities"
-        verbose_name = "License Registration Authority"
-        verbose_name_plural = "License Registration Authorities"
+        # db_table = "license_registration_authorities"
+        # verbose_name = "License Registration Authority"
+        # verbose_name_plural = "License Registration Authorities"
         ordering = ["name"]
 
     def __str__(self):

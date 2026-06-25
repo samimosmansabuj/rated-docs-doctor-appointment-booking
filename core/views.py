@@ -1,8 +1,8 @@
 from rest_framework import viewsets
-from .models import Procedure
-from .serializers import ProcedureSerializer, SubProcedureSerializer
+from .models import Procedure, LicenseRegistrationAuthority
+from .serializers import ProcedureSerializer, SubProcedureSerializer, LicenseRegistrationAuthoritySerializer
 from .permissions import IsAdminOrReadOnly
-from .utils.viewsets import OwnModelViewSet
+from .utils.viewsets import OwnModelViewSet, OwnReadOnlyModelViewSet
 from .constants import PROCEDURE_CHOICES
 from rest_framework.response import Response
 from rest_framework import status
@@ -35,6 +35,13 @@ class MainProcedureViewSet(OwnModelViewSet):
     serializer_class = ProcedureSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+class LicenseRegistrationAuthorityViewSet(OwnModelViewSet):
+    serializer_class = LicenseRegistrationAuthoritySerializer
+    permission_classes = [IsAdminOrReadOnly]
 
-
+    def get_queryset(self):
+        queryset = LicenseRegistrationAuthority.objects.all()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(is_active=True)
+        return queryset
 

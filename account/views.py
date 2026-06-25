@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import (
-    ResendOTPSerializer, SignupSerializer, LoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer, ChangePasswordSerializer
+    ResendOTPSerializer, SignupSerializer, UserLoginSerializer, AdminLoginSerializer, RefreshSerializer, DentistProfessionalSerializer, AdminUserAddSerializer, VerifyOTPSerializer, ChangePasswordSerializer
 )
 from core.utils.response import custom_response
 from core.utils.views import OwnAPIView
@@ -41,8 +41,19 @@ class AdminUserAddViews(OwnAPIView):
             status=status.HTTP_201_CREATED
         )
 
-class LoginAPIView(OwnAPIView):
-    serializer_class = LoginSerializer
+class UserLoginAPIView(OwnAPIView):
+    serializer_class = UserLoginSerializer
+    
+    def success_response(self, serializer):
+        return custom_response(
+            success=True,
+            message="Login successful",
+            data=serializer.validated_data,
+            status=status.HTTP_200_OK
+        )
+
+class AdminLoginAPIView(OwnAPIView):
+    serializer_class = AdminLoginSerializer
     
     def success_response(self, serializer):
         return custom_response(

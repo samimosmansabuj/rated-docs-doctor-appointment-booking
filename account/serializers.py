@@ -106,16 +106,17 @@ class AdminUserAddSerializer(serializers.ModelSerializer):
             #     DentistProfile.objects.create(user=user, phone=phone)
             return user
 
-class LoginSerializer(serializers.Serializer):
+class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-    role = serializers.CharField(write_only=True)
-    
-    def check_role(self, role, user):
-        if role not in USER_ROLE_CHOICES.values:
-            raise ValidationError("Invalid Role")
-        if role != user.role:
-            raise ValidationError(f"This user is not {role}")
+
+    def check_role(self, user):
+        if not user:
+            raise ValidationError("Invalid credentials")
+        if user.role not in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST]:
+            raise ValidationError("Only Patient or Dentist can login.")
+        if user.role in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST] and user.is_verified is False:
+            raise ValidationError("User Unverified.")
         return True
 
     def get_profile_created(self, user):
@@ -123,31 +124,46 @@ class LoginSerializer(serializers.Serializer):
             return True
         elif user.role == USER_ROLE_CHOICES.DENTIST and hasattr(user, "dentist_profile"):
             return True
-        elif user.role == USER_ROLE_CHOICES.ADMIN:
-            return True
         else:
             return False
     
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
-        role = attrs.get("role")
+        user = authenticate(email=email, password=password)
+        self.check_role(user)
+        refresh = RefreshToken.for_user(user)
+        return {
+            "user": UserSerializer(user).data,
+            "role": user.role,
+            "profile_created": self.get_profile_created(user),
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }
+
+class AdminLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
+    def check_role(self, user):
+        if user.role not in [USER_ROLE_CHOICES.ADMIN, USER_ROLE_CHOICES.STAFF]:
+            raise ValidationError("Login Must be Admin Only.")
+        return True
+    
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
         user = authenticate(email=email, password=password)
         if not user:
             raise ValidationError("Invalid credentials")
-        self.check_role(role, user)
-        if user.role in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST] and user.is_verified is False:
-            raise ValidationError("User Unverified.")
+        self.check_role(user)
         refresh = RefreshToken.for_user(user)
-        
         response = {
             "user": UserSerializer(user).data,
             "role": user.role,
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         }
-        if user.role in [USER_ROLE_CHOICES.PATIENT, USER_ROLE_CHOICES.DENTIST]:
-            response["profile_created"] = self.get_profile_created(user)
         return response
 
 class RefreshSerializer(serializers.Serializer):
